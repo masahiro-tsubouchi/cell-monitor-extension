@@ -1,0 +1,51 @@
+{
+  "jupyter.lab.setting-icon": "ui-components:settings",
+  "jupyter.lab.setting-icon-label": "Cell Monitor",
+  "title": "Cell Monitor",
+  "description": "Settings for the Cell Monitor extension",
+  "type": "object",
+  "properties": {
+    "serverUrl": {
+      "type": "string",
+      "title": "Server URL",
+      "description": "URL of the FastAPI server to send cell execution data",
+      "default": "http://localhost:8000/student-progress"
+    },
+    "userId": {
+      "type": "string",
+      "title": "User ID",
+      "description": "Unique identifier for the user",
+      "default": ""
+    },
+    "userName": {
+      "type": "string",
+      "title": "User Name",
+      "description": "Display name for the user",
+      "default": "Anonymous"
+    },
+    "batchSize": {
+      "type": "integer",
+      "title": "Batch Size",
+      "description": "Number of executions to collect before sending to server",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 100
+    },
+    "retryAttempts": {
+      "type": "integer",
+      "title": "Retry Attempts",
+      "description": "Number of retry attempts when sending data fails",
+      "default": 3,
+      "minimum": 0,
+      "maximum": 10
+    },
+    "maxNotifications": {
+      "type": "integer",
+      "title": "Max Notifications",
+      "description": "Maximum number of notifications to show",
+      "default": 3,
+      "minimum": 0,
+      "maximum": 10
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "name": "cell-monitor",
+  "version": "0.1.0",
+  "description": "JupyterLab extension for cell execution monitoring",
+  "keywords": [
+    "jupyter",
+    "jupyterlab",
+    "jupyterlab-extension"
+  ],
+  "homepage": "https://github.com/company/cell-monitor-extension",
+  "bugs": {
+    "url": "https://github.com/company/cell-monitor-extension/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Developer"
+  },
+  "files": [
+    "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
+    "style/**/*.{css,js,eot,gif,html,jpg,json,png,svg,woff2,ttf}"
+  ],
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "style": "style/index.css",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/company/cell-monitor-extension.git"
+  },
+  "scripts": {
+    "build": "npm run build:lib && npm run build:labextension:dev",
+    "build:prod": "npm run clean && npm run build:lib && npm run build:labextension",
+    "build:labextension": "jupyter labextension build .",
+    "build:labextension:dev": "jupyter labextension build --development True .",
+    "build:lib": "tsc",
+    "clean": "npm run clean:lib && npm run clean:labextension",
+    "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
+    "clean:labextension": "rimraf cell_monitor/labextension",
+    "eslint": "eslint . --ext .ts,.tsx --fix",
+    "eslint:check": "eslint . --ext .ts,.tsx",
+    "install:extension": "npm run build",
+    "watch": "run-p watch:src watch:labextension",
+    "watch:src": "tsc -w",
+    "watch:labextension": "jupyter labextension watch ."
+  },
+  "dependencies": {
+    "@jupyterlab/application": "^4.2.4",
+    "@jupyterlab/notebook": "^4.2.4",
+    "@jupyterlab/services": "^7.2.4",
+    "@jupyterlab/settingregistry": "^4.2.4",
+    "@types/axios": "^0.14.4",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "axios": "^1.10.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@jupyterlab/builder": "^4.2.4",
+    "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@typescript-eslint/parser": "^5.55.0",
+    "eslint": "^8.36.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.8.7",
+    "rimraf": "^4.4.1",
+    "typescript": "~5.0.2"
+  },
+  "sideEffects": [
+    "style/*.css",
+    "style/index.js"
+  ],
+  "jupyterlab": {
+    "extension": true,
+    "outputDir": "cell_monitor/labextension",
+    "schemaDir": "schema",
+    "_build": {
+      "load": "static/remoteEntry.de9979cc05b9a8a6397e.js",
+      "extension": "./extension",
+      "style": "./style"
+    }
+  },
+  "styleModule": "style/index.js",
+  "packageManager": "yarn@1.22.19"
+}

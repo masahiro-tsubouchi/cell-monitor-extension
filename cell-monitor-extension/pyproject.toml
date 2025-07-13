@@ -1,0 +1,107 @@
+[build-system]
+requires = ["hatchling>=1.5.0", "hatch-nodejs-version>=0.3.2", "jupyterlab>=4.0.0,<5", "hatch-jupyter-builder>=0.5"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cell_monitor"
+description = "JupyterLab extension for cell execution monitoring"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+authors = [
+    { name = "Developer", email = "developer@example.com" },
+]
+keywords = [
+    "Jupyter",
+    "JupyterLab",
+    "JupyterLab4",
+]
+classifiers = [
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: 4",
+    "Framework :: Jupyter :: JupyterLab :: Extensions",
+    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "jupyterlab>=4.0.0,<5"
+]
+
+dynamic = ["version"]
+
+[project.entrypoints.jupyter_server_extension]
+cell_monitor = "cell_monitor"
+
+[project.entrypoints.jupyter_lsp]
+cell_monitor = "cell_monitor.lsp"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "pytest-tornasync>=0.11.0",
+]
+
+test_ui = [
+    "pytest>=6.0",
+    "playwright>=1.15.0",
+    "pytest-playwright>=0.2.3",
+]
+
+dev = [
+    "black>=22.0.0",
+    "isort>=5.0.0",
+    "mypy>=0.900",
+    "types-requests",
+    "types-setuptools",
+]
+
+[project.urls]
+Homepage = "https://github.com/company/cell-monitor-extension"
+Bug = "https://github.com/company/cell-monitor-extension/issues"
+Changelog = "https://github.com/company/cell-monitor-extension/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+source = "nodejs"
+
+[tool.hatch.build.targets.wheel.shared-data]
+"cell_monitor/labextension" = "share/jupyter/labextensions/cell-monitor"
+"install.json" = "share/jupyter/labextensions/cell-monitor/install.json"
+"jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
+"jupyter-config/jupyter_server_config.json" = "etc/jupyter/jupyter_server_config.d/cell_monitor.json"
+"schema" = "share/jupyter/lab/schemas/cell-monitor"
+
+[tool.hatch.build.targets.wheel]
+artifacts = ["cell_monitor/labextension"]
+
+[tool.hatch.build.hooks.version]
+path = "cell_monitor/_version.py"
+
+[tool.hatch.build.hooks.jupyter-builder]
+dependencies = ["hatch-jupyter-builder>=0.5"]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = [
+    "cell_monitor/labextension/static/style.js",
+    "cell_monitor/labextension/package.json",
+]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+build_cmd = "build:prod"
+npm = ["jlpm"]
+
+[tool.hatch.build.hooks.jupyter-builder.editable-build-kwargs]
+build_cmd = "install:extension"
+npm = ["jlpm"]
+source_dir = "src"
+build_dir = "cell_monitor/labextension"
+
+[tool.jupyter-releaser.options]
+version_cmd = "hatch version"

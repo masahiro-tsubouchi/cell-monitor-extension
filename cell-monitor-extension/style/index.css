@@ -1,0 +1,8 @@
+/* Cell monitor extension styles */
+.cell-monitor-notification {
+  background-color: rgba(33, 150, 243, 0.1);
+  border-left: 3px solid #2196F3;
+  padding: 5px 10px;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+}

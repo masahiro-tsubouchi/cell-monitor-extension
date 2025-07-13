@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  jupyterlab:
+    build:
+      context: ./cell-monitor-extension
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/notebooks
+    environment:
+      - JUPYTER_TOKEN=easy  # 簡単なアクセストークン。本番環境では変更してください
+    depends_on:
+      - fastapi
+
+  fastapi:
+    build:
+      context: ./fastapi_server
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./fastapi_server:/app
