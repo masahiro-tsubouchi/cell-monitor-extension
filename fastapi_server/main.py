@@ -1,163 +1,98 @@
-from fastapi import FastAPI, HTTPException, Body
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
-from enum import Enum
+import asyncio
 import json
-import logging
-from datetime import datetime
-import uuid
+import os
+from contextlib import asynccontextmanager
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()]
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from api.api import api_router
+from core.config import settings
+from core.connection_manager import manager
+from db.redis_client import get_redis_client, NOTIFICATION_CHANNEL
+from db.base import Base
+from db.session import engine
+
+
+async def redis_subscriber():
+    """Redisの通知チャンネルを購読し、メッセージをWebSocketクライアントにブロードキャストする"""
+    redis = await get_redis_client()
+    pubsub = redis.pubsub()
+    await pubsub.subscribe(NOTIFICATION_CHANNEL)
+    print(f"Subscribed to '{NOTIFICATION_CHANNEL}' channel.")
+    try:
+        while True:
+            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+            if message and message.get("type") == "message":
+                print(f"Received notification: {message['data']}")
+                await manager.broadcast(message['data'].decode('utf-8'))
+            await asyncio.sleep(0.01)
+    except asyncio.CancelledError:
+        print("Redis subscriber task cancelled.")
+    finally:
+        await pubsub.close()
+
+
+# FastAPI 0.109.2以降のlifespan実装
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPIアプリケーションのライフサイクルを管理するコンテキストマネージャー"""
+    # アプリケーション起動時の処理
+    print("Starting application...")
+    
+    # データベーステーブルの作成
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created")
+    
+    # Redis購読タスクの作成と開始
+    redis_subscriber_task = asyncio.create_task(redis_subscriber())
+    print("Redis subscriber task started")
+    
+    # アプリケーションの実行中はここでyield
+    yield
+    
+    # アプリケーション終了時の処理
+    print("Shutting down application...")
+    
+    # Redis購読タスクのクリーンアップ
+    print("Cancelling Redis subscriber task...")
+    redis_subscriber_task.cancel()
+    
+    try:
+        await redis_subscriber_task
+    except asyncio.CancelledError:
+        print("Redis subscriber task cancelled successfully")
+
+
+# FastAPIアプリケーションの初期化
+# lifespanを引数として渡す
+# Python 3.12とFastAPI 0.109.2に対応した書き方
+# Note: lifespanは空のジェネレーターではなく、asynccontextmanagerである必要がある
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
-logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Cell Monitor API")
+# CORS設定
+if settings.BACKEND_CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-# Enable CORS for JupyterLab
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # For development - restrict this in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# APIルーターの追加
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# イベントタイプの定義
-class EventType(str, Enum):
-    CELL_EXECUTED = "cell_executed"
-    NOTEBOOK_OPENED = "notebook_opened"
-    NOTEBOOK_SAVED = "notebook_saved"
-    NOTEBOOK_CLOSED = "notebook_closed"
+# 静的ファイルディレクトリのマウント
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# セルタイプの定義
-class CellType(str, Enum):
-    CODE = "code"
-    MARKDOWN = "markdown"
-    RAW = "raw"
-
-# 従来のCell Execution Dataモデル (後方互換性のため保持)
-class CellExecution(BaseModel):
-    cellId: str
-    code: str
-    executionTime: str
-    result: str
-    hasError: bool
-    notebookPath: str
-
-# 拡張データモデル - 学習進捗データ
-class StudentProgressData(BaseModel):
-    eventId: str
-    eventType: EventType
-    eventTime: str
-    userId: str
-    userName: str
-    sessionId: str
-    notebookPath: str
-    cellId: Optional[str] = None
-    cellIndex: Optional[int] = None
-    cellType: Optional[CellType] = None
-    code: Optional[str] = None
-    executionCount: Optional[int] = None
-    hasError: Optional[bool] = None
-    errorMessage: Optional[str] = None
-    result: Optional[str] = None
-    executionDurationMs: Optional[int] = None
-
+# ルートエンドポイント
 @app.get("/")
-async def root():
-    return {"message": "Welcome to Cell Monitor API"}
-
-@app.post("/cell-monitor")
-async def receive_cell_data(data: List[CellExecution]):
-    try:
-        # Log the received data
-        logger.info(f"Received data for {len(data)} cells")
-        
-        for cell in data:
-            # Format and log each cell execution
-            execution_time = datetime.fromisoformat(cell.executionTime.replace('Z', '+00:00'))
-            status = "ERROR" if cell.hasError else "SUCCESS"
-            
-            log_message = f"""
-            =================================
-            CELL EXECUTION: {status}
-            =================================
-            Notebook: {cell.notebookPath}
-            Cell ID: {cell.cellId}
-            Time: {execution_time}
-            Code:
-            ```
-            {cell.code}
-            ```
-            Result: {cell.result[:100]}{"..." if len(cell.result) > 100 else ""}
-            =================================
-            """
-            logger.info(log_message)
-            
-        return {"status": "success", "processed": len(data)}
-    
-    except Exception as e:
-        logger.error(f"Error processing cell data: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/student-progress")
-async def receive_student_progress(data: List[StudentProgressData]):
-    try:
-        # Log the received data
-        logger.info(f"Received student progress data: {len(data)} events")
-        
-        for event in data:
-            # イベントタイプに応じたログメッセージを構築
-            event_time = datetime.fromisoformat(event.eventTime.replace('Z', '+00:00'))
-            
-            # 基本情報のログを構築
-            base_info = f"""
-            =================================
-            EVENT: {event.eventType.value}
-            =================================
-            User: {event.userName} (ID: {event.userId})
-            Session: {event.sessionId}
-            Time: {event_time}
-            Notebook: {event.notebookPath}
-            """
-            
-            # イベントタイプごとの追加情報
-            if event.eventType == EventType.CELL_EXECUTED:
-                status = "ERROR" if event.hasError else "SUCCESS"
-                cell_info = f"""
-                Cell ID: {event.cellId}
-                Cell Index: {event.cellIndex if event.cellIndex is not None else 'N/A'}
-                Cell Type: {event.cellType.value if event.cellType else 'N/A'}
-                Execution Count: {event.executionCount if event.executionCount is not None else 'N/A'}
-                Execution Duration: {event.executionDurationMs if event.executionDurationMs is not None else 'N/A'} ms
-                Status: {status}
-                Code:
-                ```
-                {event.code if event.code else 'N/A'}
-                ```
-                Result: {event.result[:100] if event.result else 'N/A'}{"..." if event.result and len(event.result) > 100 else ""}
-                {f"Error: {event.errorMessage}" if event.hasError and event.errorMessage else ""}
-                """
-                log_message = base_info + cell_info
-            elif event.eventType in [EventType.NOTEBOOK_OPENED, EventType.NOTEBOOK_SAVED, EventType.NOTEBOOK_CLOSED]:
-                log_message = base_info + "\n"
-            else:
-                log_message = base_info + "\nUnknown event type\n"
-            
-            log_message += "=================================\n"
-            logger.info(log_message)
-            
-        return {"status": "success", "processed": len(data)}
-    
-    except Exception as e:
-        logger.error(f"Error processing student progress data: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+async def read_root():
+    """APIルートエンドポイント"""
+    return {"message": f"Welcome to {settings.PROJECT_NAME}"}

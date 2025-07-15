@@ -1,56 +1,171 @@
+import { ILabShell } from '@jupyterlab/application';
+import { Notification } from '@jupyterlab/apputils';
 import { INotebookTracker, NotebookActions } from '@jupyterlab/notebook';
+// PageConfig is used in the commented-out code for future features
+// import { PageConfig } from '@jupyterlab/coreutils';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import axios from 'axios';
+/**
+ * ユーティリティ関数: UUIDを生成する
+ */
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+/**
+ * ユーティリティ関数: パスからファイル名を抽出する
+ * 将来的な拡張のために用意されている関数
+ */
+// 未使用警告を避けるため一時的にコメントアウト
+/* function extractFilenameFromPath(path: string): string {
+  const parts = path.split('/');
+  return parts[parts.length - 1];
+} */
+/**
+ * ユーティリティ関数: JupyterLabからユーザー情報を取得する
+ * 設定からユーザー情報を取得し、設定がない場合はデフォルト値を使用
+ * 一度生成されたIDは保持し、一貫性のある識別を保証する
+ */
+// 永続的なユーザーIDを保持する変数（生成したIDを保存）
+let persistentUserId = '';
+function getUserInfo() {
+    // 設定からユーザー情報を取得
+    let userId = globalSettings.userId;
+    const userName = globalSettings.userName || 'Anonymous';
+    // 設定で明示的に指定されているIDがある場合はそれを優先
+    if (userId && userId.length > 0) {
+        // 設定の値を永続IDにも保存
+        persistentUserId = userId;
+        return { userId, userName };
+    }
+    // 過去に生成したIDがある場合はそれを使用
+    if (persistentUserId && persistentUserId.length > 0) {
+        return { userId: persistentUserId, userName };
+    }
+    // どちらもない場合は生成して保存
+    persistentUserId = generateUUID();
+    return { userId: persistentUserId, userName };
+}
+// グローバル変数
+let globalServerUrl = '';
+let sessionId = generateUUID(); // セッションIDの初期化
+let globalSettings = {
+    serverUrl: 'http://localhost:8000/student-progress',
+    userId: '',
+    userName: 'Anonymous',
+    batchSize: 1,
+    retryAttempts: 3,
+    maxNotifications: 3
+};
+// 設定から最大表示メッセージ数を取得するユーティリティ関数
+function getMaxNotifications(settings) {
+    return settings.get('maxNotifications').composite;
+}
 /**
  * Initialization data for the cell-monitor extension
  */
 const plugin = {
     id: 'cell-monitor:plugin',
     autoStart: true,
-    requires: [INotebookTracker],
-    optional: [ISettingRegistry],
-    activate: (app, notebookTracker, settingRegistry) => {
+    requires: [INotebookTracker, ISettingRegistry, ILabShell],
+    activate: (app, tracker, settingRegistry, labShell) => {
         console.log('JupyterLab extension cell-monitor is activated!');
-        // Default settings
-        let settings = {
-            serverUrl: 'http://localhost:8000/cell-monitor',
-            batchSize: 1,
-            retryAttempts: 3
-        };
-        // Cell execution buffer
-        const executionBuffer = [];
-        // Load settings
-        if (settingRegistry) {
-            settingRegistry
-                .load(plugin.id)
-                .then(data => {
-                settings = {
-                    serverUrl: data.get('serverUrl').composite,
-                    batchSize: data.get('batchSize').composite,
-                    retryAttempts: data.get('retryAttempts').composite
-                };
-                console.log('cell-monitor settings loaded:', settings);
-            })
-                .catch(reason => {
-                console.error('Failed to load cell-monitor settings', reason);
-            });
-        }
-        // Send data to server function
-        const sendData = async (data) => {
+        // Display activation notification to the user
+        Notification.success('Cell Monitor Activated', {
+            autoClose: 2000 // Close automatically after 2 seconds
+        });
+        // セッション管理の初期化
+        sessionId = generateUUID();
+        // 設定のロード
+        settingRegistry
+            .load(plugin.id)
+            .then((registrySettings) => {
+            console.log('JupyterLab extension cell-monitor: settings loaded.');
+            // スキーマデータの確認のためのデバッグログ
+            const schema = registrySettings.schema;
+            console.log('Schema loaded:', schema.title, schema.description);
+            // サーバーURLを設定から取得
+            globalServerUrl = registrySettings.get('serverUrl').composite;
+            globalSettings.serverUrl = globalServerUrl;
+            // ユーザー設定の取得と適用
+            const userIdSetting = registrySettings.get('userId').composite;
+            const userNameSetting = registrySettings.get('userName').composite;
+            // 設定値の確認と適切なデフォルト値の適用
+            globalSettings.userId = userIdSetting || '';
+            globalSettings.userName = userNameSetting || 'Anonymous';
+            // 設定のIDがある場合は永続IDにも適用
+            if (userIdSetting && userIdSetting.length > 0) {
+                persistentUserId = userIdSetting;
+                console.log('User ID set from settings:', persistentUserId);
+            }
+            else {
+                // 設定がない場合は生成されたIDが使用される
+                const userInfo = getUserInfo();
+                console.log('Generated user ID will be used:', userInfo.userId);
+            }
+            globalSettings.retryAttempts = registrySettings.get('retryAttempts').composite;
+            console.log('Server URL set to:', globalServerUrl);
+            console.log('User settings - ID:', globalSettings.userId || '<auto-generated>', 'Name:', globalSettings.userName);
+            // Get the maxNotifications value from settings
+            const maxNotifications = getMaxNotifications(registrySettings);
+            console.log('Max notifications:', maxNotifications);
+        })
+            .catch(reason => {
+            console.error('Failed to load cell-monitor settings', reason);
+        });
+        // デフォルト設定は既にglobalSettingsとして設定済み
+        // 将来的にバッファリングが必要になった場合のために、設定は残しておく
+        // Send data to server function - 従来のデータモデル用（後方互換性のため保持）
+        const sendLegacyData = async (data) => {
             if (data.length === 0)
                 return;
+            // 従来のエンドポイントに送信
             let retries = 0;
-            while (retries <= settings.retryAttempts) {
+            const legacyUrl = globalSettings.serverUrl.replace('student-progress', 'cell-monitor');
+            while (retries <= globalSettings.retryAttempts) {
                 try {
-                    await axios.post(settings.serverUrl, data);
-                    console.log('Cell execution data sent successfully:', data.length, 'items');
+                    await axios.post(legacyUrl, data);
+                    console.log('Legacy cell execution data sent successfully:', data.length, 'items');
                     break;
                 }
                 catch (error) {
-                    console.error('Failed to send cell execution data:', error);
+                    console.error('Failed to send legacy cell execution data:', error);
                     retries++;
-                    if (retries > settings.retryAttempts) {
-                        console.error('Max retry attempts reached. Data will be lost.');
+                    if (retries > globalSettings.retryAttempts) {
+                        console.error('Max retry attempts reached. Legacy data will be lost.');
+                        break;
+                    }
+                    // Wait before retrying (exponential backoff)
+                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries - 1)));
+                }
+            }
+        };
+        // 新しい拡張データモデル用の送信関数
+        const sendProgressData = async (data) => {
+            if (data.length === 0)
+                return;
+            // 新しいエンドポイントに送信
+            let retries = 0;
+            while (retries <= globalSettings.retryAttempts) {
+                try {
+                    await axios.post(globalSettings.serverUrl, data);
+                    console.log('Student progress data sent successfully:', data.length, 'events');
+                    // Show notification when data is sent successfully
+                    if (data.length > 0) {
+                        Notification.info(`Learning data sent (${data.length} events)`, {
+                            autoClose: 3000
+                        });
+                    }
+                    break;
+                }
+                catch (error) {
+                    console.error('Failed to send student progress data:', error);
+                    retries++;
+                    if (retries > globalSettings.retryAttempts) {
+                        console.error('Max retry attempts reached. Progress data will be lost.');
                         break;
                     }
                     // Wait before retrying (exponential backoff)
@@ -64,31 +179,92 @@ const plugin = {
             try {
                 if (!cell || !cell.model)
                     return;
+                // 処理開始時間（パフォーマンス計測用）
+                const startTime = performance.now();
                 const cellId = cell.model.id;
-                const code = cell.model.value.text;
-                const notebookPath = ((_a = notebookTracker.currentWidget) === null || _a === void 0 ? void 0 : _a.context.path) || '';
-                // Get output content/error status
-                const outputs = cell.model.outputs;
-                let hasError = false;
-                let resultText = '';
-                if (outputs.length > 0) {
-                    // Check for error output
-                    for (let i = 0; i < outputs.length; i++) {
-                        const output = outputs.get(i);
-                        if (output.type === 'error') {
-                            hasError = true;
-                            resultText = output.evalue || 'Error occurred';
+                // 安全にセルのコードを取得する方法
+                let code = '';
+                try {
+                    // NotebookActions.executed イベントで、cell は CodeCell であることが期待される
+                    // 新しい JupyterLab での取得方法を試みる
+                    if (cell.model.sharedModel && cell.model.sharedModel.source) {
+                        code = cell.model.sharedModel.source;
+                    }
+                    // 従来の方法もフォールバックとして残す
+                    else if (cell.model.value && cell.model.value.text) {
+                        code = cell.model.value.text;
+                    }
+                    // エディタから直接取得する方法も試す
+                    else if (cell.editor && cell.editor.model && cell.editor.model.value) {
+                        code = cell.editor.model.value.text;
+                    }
+                }
+                catch (error) {
+                    console.warn('Failed to get cell code:', error);
+                }
+                // Get notebook widget from cell
+                const notebookWidget = tracker.currentWidget;
+                if (!notebookWidget)
+                    return;
+                // Get notebook path
+                const notebookPath = ((_a = notebookWidget.context) === null || _a === void 0 ? void 0 : _a.path) || '';
+                // Get cell index and type
+                let cellIndex = undefined;
+                let cellType = undefined;
+                try {
+                    // セルのインデックスを取得
+                    const cells = notebookWidget.content.widgets;
+                    for (let i = 0; i < cells.length; i++) {
+                        if (cells[i].model.id === cellId) {
+                            cellIndex = i;
                             break;
                         }
-                        if (output.type === 'execute_result' || output.type === 'display_data') {
-                            if (output.data['text/plain']) {
-                                resultText = output.data['text/plain'];
+                    }
+                    // セルのタイプを取得
+                    if (cell.model.type) {
+                        cellType = cell.model.type;
+                    }
+                }
+                catch (error) {
+                    console.warn('Failed to get cell index or type:', error);
+                }
+                // Get execution results
+                let hasError = false;
+                let resultText = '';
+                let errorMessage = '';
+                let executionCount = undefined;
+                if (cell.outputArea) {
+                    // 実行カウントを取得
+                    try {
+                        executionCount = cell.model.executionCount || undefined;
+                    }
+                    catch (error) {
+                        console.warn('Failed to get execution count:', error);
+                    }
+                    const outputs = cell.outputArea.model.toJSON();
+                    for (const output of outputs) {
+                        if (output.output_type === 'error') {
+                            hasError = true;
+                            errorMessage = `${output.ename}: ${output.evalue}`;
+                            resultText = errorMessage;
+                            break;
+                        }
+                        else if (output.output_type === 'execute_result' || output.output_type === 'display_data') {
+                            if (output.data) {
+                                if (output.data['text/plain']) {
+                                    resultText = output.data['text/plain'];
+                                }
                             }
                         }
                     }
                 }
-                // Create execution data object
-                const executionData = {
+                // 実行時間の計測
+                const endTime = performance.now();
+                const executionDurationMs = Math.round(endTime - startTime);
+                // ユーザー情報を取得
+                const { userId, userName } = getUserInfo();
+                // 旧式のデータモデル（後方互換性のため）
+                const legacyData = {
                     cellId,
                     code,
                     executionTime: new Date().toISOString(),
@@ -96,27 +272,118 @@ const plugin = {
                     hasError,
                     notebookPath
                 };
-                // Add to buffer
-                executionBuffer.push(executionData);
-                // Send data if buffer reaches batch size
-                if (executionBuffer.length >= settings.batchSize) {
-                    const dataToSend = [...executionBuffer];
-                    executionBuffer.length = 0;
-                    sendData(dataToSend);
-                }
+                // 新しいデータモデル
+                const progressData = {
+                    eventId: generateUUID(),
+                    eventType: 'cell_executed',
+                    eventTime: new Date().toISOString(),
+                    userId,
+                    userName,
+                    sessionId,
+                    notebookPath,
+                    cellId,
+                    cellIndex,
+                    cellType,
+                    code,
+                    executionCount,
+                    hasError,
+                    errorMessage: hasError ? errorMessage : undefined,
+                    result: resultText,
+                    executionDurationMs
+                };
+                // 両方のデータを送信（新旧両方のエンドポイントをサポート）
+                sendLegacyData([legacyData]); // 後方互換性のため
+                sendProgressData([progressData]); // 新しい拡張データ
             }
             catch (error) {
                 console.error('Error processing cell execution:', error);
             }
         };
         // Listen to cell executed signal
-        notebookTracker.currentChanged.connect(() => {
-            const notebook = notebookTracker.currentWidget;
-            if (notebook) {
-                NotebookActions.executed.connect((_, args) => {
-                    processCellExecution(args.cell);
+        tracker.currentChanged.connect(() => {
+            var _a;
+            // Add notebook tracker if not already done
+            if (!tracker.currentWidget)
+                return;
+            // Add the executed signal handler for cell execution
+            NotebookActions.executed.connect((_, args) => {
+                const { cell } = args;
+                processCellExecution(cell);
+            });
+            // ノートブックが閉じられたときのイベントハンドラ
+            labShell.currentChanged.connect((_, change) => {
+                // 以前アクティブだったパネルがノートブックで、現在は別のパネルに切り替わった場合
+                const oldWidget = change.oldValue; // 型キャストで対応
+                if (oldWidget && oldWidget.hasOwnProperty('context') &&
+                    oldWidget.context && oldWidget.context.path) {
+                    // 閉じられたノートブックのパスを取得
+                    const notebookPath = oldWidget.context.path;
+                    // 最新のユーザー情報を取得
+                    const { userId, userName } = getUserInfo();
+                    // ノートブックが閉じられたイベントデータを作成
+                    const notebookClosedData = {
+                        eventId: generateUUID(),
+                        eventType: 'notebook_closed',
+                        eventTime: new Date().toISOString(),
+                        userId: userId,
+                        userName: userName,
+                        sessionId: sessionId,
+                        notebookPath: notebookPath
+                    };
+                    // データを送信
+                    sendProgressData([notebookClosedData]);
+                }
+            });
+            console.log('Cell execution tracker added to', (_a = tracker.currentWidget) === null || _a === void 0 ? void 0 : _a.context.path);
+            // Load settings from registry
+            settingRegistry.load(plugin.id).then((registrySettings) => {
+                // グローバル設定を更新
+                globalServerUrl = registrySettings.get('serverUrl').composite;
+                globalSettings.serverUrl = globalServerUrl;
+                globalSettings.userId = registrySettings.get('userId').composite || '';
+                globalSettings.userName = registrySettings.get('userName').composite || 'Anonymous';
+                globalSettings.retryAttempts = registrySettings.get('retryAttempts').composite;
+                // ノートブック関連のイベントを監視
+                tracker.widgetAdded.connect((sender, panel) => {
+                    var _a;
+                    // ノートブックが開かれたイベントを処理
+                    // 最新のユーザー情報を取得
+                    const { userId, userName } = getUserInfo();
+                    const notebookOpenedData = {
+                        eventId: generateUUID(),
+                        eventType: 'notebook_opened',
+                        eventTime: new Date().toISOString(),
+                        userId: userId,
+                        userName: userName,
+                        sessionId: sessionId,
+                        notebookPath: panel.context.path
+                    };
+                    // データを送信
+                    sendProgressData([notebookOpenedData]);
+                    // ノートブック保存イベントを監視
+                    panel.context.saveState.stateChanged.connect((_, state) => {
+                        if (state === 'completed') {
+                            // 最新のユーザー情報を取得
+                            const { userId, userName } = getUserInfo();
+                            const notebookSavedData = {
+                                eventId: generateUUID(),
+                                eventType: 'notebook_saved',
+                                eventTime: new Date().toISOString(),
+                                userId: userId,
+                                userName: userName,
+                                sessionId: sessionId,
+                                notebookPath: panel.context.path
+                            };
+                            // データを送信
+                            sendProgressData([notebookSavedData]);
+                        }
+                    });
+                    // Add executed signal handler for content changes
+                    (_a = panel.content.model) === null || _a === void 0 ? void 0 : _a.contentChanged.connect(() => {
+                        console.debug('notebook content changed');
+                    });
                 });
-            }
+            });
         });
     }
 };

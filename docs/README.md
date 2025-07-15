@@ -52,11 +52,11 @@ JupyterLab拡張機能の動作は、JupyterLabの `Settings` > `Advanced Settin
 現状のシステムをより堅牢で実用的なものにするための提案です。
 
 1.  **データベースの導入**:
-    - 現在は受信データをログ出力しているだけですが、これをデータベース（例: PostgreSQL, SQLite）に永続化するべきです。
-    - `fastapi_server` にて、SQLAlchemyなどのORMを導入し、受信した `StudentProgressData` をテーブルに保存する処理を追加します。
+    - 現在は受信データをログ出力していてだけですが、これをデータベース（例: PostgreSQL, SQLite）に永続化するべきです。
+    - `fastapi_server` にて、SQLAlchemyなどのORMを導入し、受信した `StudentProgressData` をテーブルに保存する処理を追加します。大規模なリアルタイム性を考慮したアーキテクチャについては、[リアルタイム進捗確認のためのDBアーキテクチャガイド](./DATABASE_ARCHITECTURE.md) を参照してください。さらに高度な技術（Redis, InfluxDB）との比較については、[DB技術選定ガイド](./DATABASE_COMPARISON.md)が参考になります。
 
 2.  **データ分析・可視化機能の追加**:
-    - 保存したデータを分析し、教育者向けのダッシュボードを作成します。
+    - 保存したデータを分析し、教育者向けのダッシュボードを作成します。詳細な分析・可視化の手法については、[学習進捗データの分析と可視化ガイド](./ANALYSIS_GUIDE.md) を参照してください。
     - FastAPIに新しいエンドポイントを追加し、生徒ごとの進捗状況やクラス全体の傾向などを返すAPIを実装します。
     - フロントエンド側で、このAPIを叩いて結果を可視化するUIを構築します（例: Chart.js, D3.jsなどを利用）。
 
