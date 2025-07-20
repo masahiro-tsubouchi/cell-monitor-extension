@@ -6,20 +6,26 @@
 
 ## 📋 概要
 
-JupyterLab Cell Monitor Extension のテスト実行手順を体系化したドキュメントです。AI駆動TDD（テスト駆動開発）により実装された57個のテストケースの実行方法と、CI/CDパイプラインでの自動テスト実行について説明します。
+JupyterLab Cell Monitor Extension のテスト実行手順を体系化したドキュメントです。AI駆動TDD（テスト駆動開発）により実装された63個のテストケースの実行方法と、CI/CDパイプラインでの自動テスト実行について説明します。
 
 ## 🧪 テスト種別と構成
 
 ### テスト全体構成
-- **CRUDテスト**: 23個のテストケース（単体テスト）
-- **APIテスト**: 34個のテストケース（統合テスト）
-- **合計**: **57個のテストケース**
+- **Environment API**: 19個のテストケース（包括的API機能テスト）
+- **Notebook Version API**: 22個のテストケース（バージョン管理機能テスト）
+- **LMS統合テスト**: 9個のテストケース（Classes/Assignments/Submissions連携テスト）
+- **WebSocket統合テスト**: 13個のテストケース（リアルタイム通信テスト）
+- **合計**: **63個のテストケース**
 
 ### テスト対象機能
-1. **Classes API** (`/api/v1/classes`) - 11個のAPIテスト
-2. **Assignments API** (`/api/v1/assignments`) - 11個のAPIテスト
-3. **Submissions API** (`/api/v1/submissions`) - 12個のAPIテスト
-4. **CRUD Operations** - 各モデル7-8個のCRUDテスト
+1. **Environment API** (`/api/v1/v1/environment`) - 19個のテストケース
+   - Current環境取得、スナップショット作成、パッケージ情報、ヘルスチェック、差分分析、統合テスト
+2. **Notebook Version API** (`/api/v1/v1/notebook-version`) - 22個のテストケース
+   - スナップショット、バージョンコミット、履歴管理、ブランチ管理、比較機能、統計情報
+3. **LMS統合テスト** (`/api/v1/classes`, `/api/v1/assignments`, `/api/v1/submissions`) - 9個のテストケース
+   - 完全LMSワークフロー、複数学生管理、データ整合性、エラーハンドリング
+4. **WebSocket統合テスト** (`/api/v1/v1/websocket`) - 13個のテストケース
+   - 接続管理、ブロードキャスト、統合ワークフロー、エラーハンドリング、パフォーマンス
 
 ## 🐳 Docker環境でのテスト実行
 
@@ -47,7 +53,62 @@ docker compose -f docker-compose.test.yml exec fastapi pytest -v --tb=short
 
 ### 3. 種別別テスト実行
 
-#### CRUDテストのみ実行
+#### Environment APIテスト実行（19個）
+```bash
+# Environment API包括テスト実行
+docker compose exec fastapi pytest tests/api/endpoints/test_environment_comprehensive.py -v
+
+# 特定のテストクラスのみ実行
+docker compose exec fastapi pytest tests/api/endpoints/test_environment_comprehensive.py::TestEnvironmentCurrentAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_environment_comprehensive.py::TestEnvironmentSnapshotAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_environment_comprehensive.py::TestEnvironmentPackageAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_environment_comprehensive.py::TestEnvironmentHealthAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_environment_comprehensive.py::TestEnvironmentDiffAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_environment_comprehensive.py::TestEnvironmentAnalysisAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_environment_comprehensive.py::TestEnvironmentIntegration -v
+```
+
+#### Notebook Version APIテスト実行（22個）
+```bash
+# Notebook Version API包括テスト実行
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py -v
+
+# 特定のテストクラスのみ実行
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py::TestNotebookVersionSnapshotAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py::TestNotebookVersionAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py::TestNotebookVersionHistoryAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py::TestNotebookVersionBranchAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py::TestNotebookVersionComparisonAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py::TestNotebookVersionSnapshotDetailAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py::TestNotebookVersionSystemAPI -v
+docker compose exec fastapi pytest tests/api/endpoints/test_notebook_version_comprehensive.py::TestNotebookVersionIntegration -v
+```
+
+#### LMS統合テスト実行（9個）
+```bash
+# LMS統合テスト実行
+docker compose exec fastapi pytest tests/api/endpoints/test_lms_comprehensive.py -v
+
+# 特定のテストクラスのみ実行
+docker compose exec fastapi pytest tests/api/endpoints/test_lms_comprehensive.py::TestLMSIntegrationWorkflow -v
+docker compose exec fastapi pytest tests/api/endpoints/test_lms_comprehensive.py::TestLMSDataIntegrity -v
+docker compose exec fastapi pytest tests/api/endpoints/test_lms_comprehensive.py::TestLMSErrorHandling -v
+```
+
+#### WebSocket統合テスト実行（13個）
+```bash
+# WebSocket統合テスト実行
+docker compose exec fastapi pytest tests/api/endpoints/test_websocket_comprehensive.py -v
+
+# 特定のテストクラスのみ実行
+docker compose exec fastapi pytest tests/api/endpoints/test_websocket_comprehensive.py::TestWebSocketConnectionManagement -v
+docker compose exec fastapi pytest tests/api/endpoints/test_websocket_comprehensive.py::TestWebSocketEndpoint -v
+docker compose exec fastapi pytest tests/api/endpoints/test_websocket_comprehensive.py::TestWebSocketIntegrationWorkflow -v
+docker compose exec fastapi pytest tests/api/endpoints/test_websocket_comprehensive.py::TestWebSocketErrorHandling -v
+docker compose exec fastapi pytest tests/api/endpoints/test_websocket_comprehensive.py::TestWebSocketPerformance -v
+```
+
+#### レガシーCRUDテストのみ実行
 ```bash
 docker compose -f docker-compose.test.yml exec fastapi pytest -v tests/crud/
 ```

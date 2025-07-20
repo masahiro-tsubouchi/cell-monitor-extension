@@ -1,10 +1,16 @@
-from pydantic import BaseModel
+from pydantic import ConfigDict
+from schemas.event import EventData
 
 
-class StudentProgress(BaseModel):
+class StudentProgress(EventData):
     """
-    学生の進捗状況を表すスキーマ。
+    InfluxDBに書き込むための、より詳細な進捗イベントスキーマ。
+    EventDataを継承し、DB永続化で得られたID情報を追加する。
     """
 
-    id: int  # 学生のID
-    # 今後、課題IDや進捗率などのフィールドを追加予定
+    studentId: int
+    notebookId: int
+    cellId_db: int
+
+    # Pydantic V2では from_attributes = True を使用
+    model_config = ConfigDict(from_attributes=True)

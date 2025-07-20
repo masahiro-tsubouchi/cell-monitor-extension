@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from db.models import AssignmentSubmission
@@ -23,7 +24,7 @@ def create_assignment_submission(
     return db_submission
 
 
-def get_assignment_submission(db: Session, submission_id: int) -> AssignmentSubmission:
+def get_assignment_submission(db: Session, submission_id: int) -> Optional[AssignmentSubmission]:
     """
     IDで課題提出を取得する
     """
@@ -36,7 +37,7 @@ def get_assignment_submission(db: Session, submission_id: int) -> AssignmentSubm
 
 def update_assignment_submission(
     db: Session, submission_id: int, submission_update: AssignmentSubmissionUpdate
-) -> AssignmentSubmission:
+) -> Optional[AssignmentSubmission]:
     """
     課題提出情報を更新する
     """
@@ -49,7 +50,7 @@ def update_assignment_submission(
         return None
 
     # 更新データを辞書に変換し、None以外の値のみを取得
-    update_data = submission_update.dict(exclude_unset=True)
+    update_data = submission_update.model_dump(exclude_unset=True)
 
     # 各フィールドを更新
     for field, value in update_data.items():
@@ -63,7 +64,7 @@ def update_assignment_submission(
 
 def delete_assignment_submission(
     db: Session, submission_id: int
-) -> AssignmentSubmission:
+) -> Optional[AssignmentSubmission]:
     """
     課題提出を削除する
     """

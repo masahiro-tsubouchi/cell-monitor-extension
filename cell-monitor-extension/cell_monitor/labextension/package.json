@@ -74,7 +74,7 @@
     "outputDir": "cell_monitor/labextension",
     "schemaDir": "schema",
     "_build": {
-      "load": "static/remoteEntry.d6425b09139029768e03.js",
+      "load": "static/remoteEntry.ddc0c7b06f67afc8abcd.js",
       "extension": "./extension",
       "style": "./style"
     }

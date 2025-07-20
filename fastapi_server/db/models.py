@@ -107,6 +107,7 @@ class CellExecution(Base):
     execution_id = Column(
         String, unique=True, nullable=False, default=lambda: str(uuid.uuid4())
     )
+    notebook_id = Column(Integer, ForeignKey("notebooks.id"), nullable=False)
     cell_id = Column(Integer, ForeignKey("cells.id"), nullable=False)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
     session_id = Column(Integer, ForeignKey("sessions.id"), nullable=False)
@@ -118,6 +119,7 @@ class CellExecution(Base):
     output = Column(Text, nullable=True)  # JSON形式の出力結果
 
     # リレーションシップ
+    notebook = relationship("Notebook")
     cell = relationship("Cell", back_populates="executions")
     student = relationship("Student", back_populates="cell_executions")
     session = relationship("Session", back_populates="cell_executions")

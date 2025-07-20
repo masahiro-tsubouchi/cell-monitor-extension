@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from db.models import Class
@@ -19,14 +20,14 @@ def create_class(db: Session, class_in: ClassCreate) -> Class:
     return db_class
 
 
-def get_class(db: Session, class_id: int) -> Class:
+def get_class(db: Session, class_id: int) -> Optional[Class]:
     """
     IDでクラスを取得する
     """
     return db.query(Class).filter(Class.id == class_id).first()
 
 
-def update_class(db: Session, class_id: int, class_update: ClassUpdate) -> Class:
+def update_class(db: Session, class_id: int, class_update: ClassUpdate) -> Optional[Class]:
     """
     クラス情報を更新する
     """
@@ -35,7 +36,7 @@ def update_class(db: Session, class_id: int, class_update: ClassUpdate) -> Class
         return None
 
     # 更新データを辞書に変換し、None以外の値のみを取得
-    update_data = class_update.dict(exclude_unset=True)
+    update_data = class_update.model_dump(exclude_unset=True)
 
     # 各フィールドを更新
     for field, value in update_data.items():
@@ -47,7 +48,7 @@ def update_class(db: Session, class_id: int, class_update: ClassUpdate) -> Class
     return db_class
 
 
-def delete_class(db: Session, class_id: int) -> Class:
+def delete_class(db: Session, class_id: int) -> Optional[Class]:
     """
     クラスを削除する
     """

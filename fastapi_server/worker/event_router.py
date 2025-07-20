@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict
 from functools import wraps
 
 from schemas.event import EventData
+from schemas.progress import StudentProgress
 from db.influxdb_client import write_progress_event
 from crud import crud_student, crud_notebook, crud_execution
 from sqlalchemy.orm import Session
@@ -108,8 +109,7 @@ class EventRouter:
 
             # ハンドラー関数を実行
             logger.info(f"イベント '{event_type}' を処理中...")
-            await handler(event_data, db)
-            return True
+            return await handler(event_data, db)
 
         except Exception as e:
             logger.error(f"イベント処理中にエラーが発生しました: {e}")
@@ -183,9 +183,9 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
         return
 
     # 2. 関連エンティティの取得または作成
-    student = crud_student.get_or_create_student(db, user_id=event.userId)
-    notebook = crud_notebook.get_or_create_notebook(db, path=event.notebookPath)
-    cell = crud_notebook.get_or_create_cell(db, notebook_id=notebook.id, event=event)
+    student, _ = crud_student.get_or_create_student(db, user_id=event.userId)
+    notebook, _ = crud_notebook.get_or_create_notebook(db, path=event.notebookPath)
+    cell, _ = crud_notebook.get_or_create_cell(db, notebook_id=notebook.id, event=event)
 
     # 3. セル実行履歴を作成
     crud_execution.create_cell_execution(
@@ -199,10 +199,22 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
         f"PostgreSQLへの実行履歴保存完了: student_id={student.id}, notebook_id={notebook.id}, cell_id={cell.id}"
     )
 
-    # 4. 時系列データをInfluxDBに書き込み（既存の処理を維持）
-    # EventDataをInfluxDB用の形式に変換する必要があるかもしれないが、一旦そのまま渡す
-    write_progress_event(event)
+    # 4. InfluxDBに書き込むためのイベントデータを作成
+    #    Pydantic V2の推奨に従い、`model_validate` を使用してバリデーションとモデル作成を行う
+    progress_data_dict = event.model_dump()
+    progress_data_dict.update(
+        {
+            "studentId": student.id,
+            "notebookId": notebook.id,
+            "cellId_db": cell.id,  # `cellId`はJupyterのID, `cellId_db`はDBのID
+        }
+    )
+    progress_event = StudentProgress.model_validate(progress_data_dict)
+
+    # 5. 時系列データをInfluxDBに書き込み
+    await write_progress_event(progress_event)
     logger.info(f"InfluxDBへの書き込み完了: {event.userId}, {event.eventType}")
+    return True
 
 
 # ノートブック保存イベントのハンドラー
@@ -235,6 +247,7 @@ async def handle_notebook_save(event_data: Dict[str, Any], db: Session):
         # 時系列データをInfluxDBに書き込み
         write_progress_event(event)
         logger.info(f"InfluxDB書き込み完了: ノートブックパス {event.notebookPath}")
+        return True
     except Exception as e:
         logger.error(f"ノートブック保存処理中にエラー: {e}")
         await handle_event_error(
@@ -248,7 +261,7 @@ event_router = EventRouter()
 
 # イベントタイプとハンドラー関数の登録
 event_router.register_handler(
-    "cell_executed", handle_cell_execution
+    "cell_execution", handle_cell_execution
 )  # フロントエンドのイベント名に合わせる
 event_router.register_handler("notebook_save", handle_notebook_save)
 # 他のイベントタイプに対応するハンドラーを追加可能

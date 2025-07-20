@@ -6,8 +6,15 @@ services:
       - ./fastapi_server:/app
     environment:
       - POSTGRES_DB=progress_db_test
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=test-token
+      - INFLUXDB_ORG=test-org
+      - INFLUXDB_BUCKET=test-bucket
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres
+      - redis
+      - influxdb
 
   postgres:
     image: postgres:16-alpine
@@ -20,5 +27,25 @@ services:
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=secretpassword
+      - DOCKER_INFLUXDB_INIT_ORG=test-org
+      - DOCKER_INFLUXDB_INIT_BUCKET=test-bucket
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=test-token
+    ports:
+      - "8087:8086"
+    volumes:
+      - influxdb_test_data:/var/lib/influxdb2
+
 volumes:
   postgres_test_data:
+  influxdb_test_data:

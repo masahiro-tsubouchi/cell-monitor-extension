@@ -15,9 +15,9 @@ import requests
 
 # テスト設定
 # JUPYTER_URLを環境変数から取得。Docker内からのテスト実行に対応するため。
-JUPYTER_URL = os.getenv("JUPYTER_URL", "http://localhost:8888")
+JUPYTER_URL = os.getenv("JUPYTER_URL", "http://jupyterlab:8888")
 JUPYTER_TOKEN = "easy"  # nosec B105
-FASTAPI_URL = "http://localhost:8000"
+FASTAPI_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000")
 TEST_TIMEOUT = 30  # 秒
 
 

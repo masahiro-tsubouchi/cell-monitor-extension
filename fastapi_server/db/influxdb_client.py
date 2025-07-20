@@ -22,7 +22,7 @@ BACKOFF_FACTOR = 2  # 指数バックオフ用の係数
 # InfluxDBクライアントの初期化
 try:
     influx_client = InfluxDBClient(
-        url=settings.INFLUXDB_URL,
+        url=settings.DYNAMIC_INFLUXDB_URL,
         token=settings.INFLUXDB_TOKEN,
         org=settings.INFLUXDB_ORG,
     )
