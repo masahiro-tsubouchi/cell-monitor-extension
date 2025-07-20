@@ -1,0 +1,16 @@
+# E2E Testing
+playwright
+requests
+pytest
+pytest-asyncio
+
+# Static Analysis & Code Quality (for pre-commit)
+pre-commit
+black
+flake8
+mypy
+bandit
+
+# Type stubs for mypy
+types-requests
+types-redis

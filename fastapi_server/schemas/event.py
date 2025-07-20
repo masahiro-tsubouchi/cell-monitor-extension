@@ -1,11 +1,13 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Any, Dict
+
 
 class EventData(BaseModel):
     """
     Generic event data schema to match the client's IStudentProgressData.
     All fields are optional to ensure initial compatibility.
     """
+
     eventId: Optional[str] = None
     eventType: Optional[str] = None
     eventTime: Optional[str] = None

@@ -9,7 +9,7 @@
       "type": "string",
       "title": "Server URL",
       "description": "URL of the FastAPI server to send cell execution data",
-      "default": "http://localhost:8000/student-progress"
+      "default": "/cell-monitor"
     },
     "userId": {
       "type": "string",

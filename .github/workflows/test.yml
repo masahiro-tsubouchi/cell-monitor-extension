@@ -1,0 +1,128 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: secretpassword
+          POSTGRES_DB: progress_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      influxdb:
+        image: influxdb:2.7
+        env:
+          DOCKER_INFLUXDB_INIT_MODE: setup
+          DOCKER_INFLUXDB_INIT_USERNAME: admin
+          DOCKER_INFLUXDB_INIT_PASSWORD: secretpassword
+          DOCKER_INFLUXDB_INIT_ORG: myorg
+          DOCKER_INFLUXDB_INIT_BUCKET: mybucket
+        ports:
+          - 8086:8086
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      working-directory: ./fastapi_server
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Wait for services
+      run: |
+        sleep 10
+        # PostgreSQL接続確認
+        until pg_isready -h localhost -p 5432 -U admin; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        # Redis接続確認
+        until redis-cli -h localhost -p 6379 ping; do
+          echo "Waiting for Redis..."
+          sleep 2
+        done
+        echo "All services are ready!"
+
+    - name: Run CRUD Tests
+      working-directory: ./fastapi_server
+      env:
+        POSTGRES_DB: progress_db_test
+        POSTGRES_USER: admin
+        POSTGRES_PASSWORD: secretpassword
+        POSTGRES_SERVER: localhost
+        POSTGRES_PORT: 5432
+      run: |
+        pytest -v tests/crud/ --tb=short
+
+    - name: Run API Tests
+      working-directory: ./fastapi_server
+      env:
+        POSTGRES_DB: progress_db_test
+        POSTGRES_USER: admin
+        POSTGRES_PASSWORD: secretpassword
+        POSTGRES_SERVER: localhost
+        POSTGRES_PORT: 5432
+      run: |
+        pytest -v tests/api/ --tb=short
+
+    - name: Run Integration Tests
+      working-directory: ./fastapi_server
+      env:
+        POSTGRES_DB: progress_db_test
+        POSTGRES_USER: admin
+        POSTGRES_PASSWORD: secretpassword
+        POSTGRES_SERVER: localhost
+        POSTGRES_PORT: 5432
+      run: |
+        pytest -v tests/integration/ --tb=short
+
+    - name: Generate Test Report
+      if: always()
+      working-directory: ./fastapi_server
+      env:
+        POSTGRES_DB: progress_db_test
+        POSTGRES_USER: admin
+        POSTGRES_PASSWORD: secretpassword
+        POSTGRES_SERVER: localhost
+        POSTGRES_PORT: 5432
+      run: |
+        pytest --tb=short --junit-xml=test-results.xml tests/
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: fastapi_server/test-results.xml

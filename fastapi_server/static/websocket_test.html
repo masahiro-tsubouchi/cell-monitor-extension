@@ -87,48 +87,48 @@
 </head>
 <body>
     <h1>WebSocket進捗通知テスト</h1>
-    
+
     <div class="card">
         <div id="status">接続状態: 未接続</div>
         <button id="connect">接続する</button>
         <button id="disconnect" disabled>切断する</button>
     </div>
-    
+
     <div class="card">
         <h2>受信メッセージ</h2>
         <div id="messages"></div>
-        
+
         <form id="messageForm">
             <input type="text" id="messageInput" placeholder="メッセージを入力してください">
             <input type="submit" value="送信">
         </form>
     </div>
-    
+
     <div class="card progress-form">
         <h2>進捗データ送信テスト</h2>
         <p>APIエンドポイントに進捗データを送信し、WebSocketによる通知を確認します。</p>
-        
+
         <form id="progressForm">
             <div class="form-group">
                 <label for="user_id">ユーザーID:</label>
                 <input type="text" id="user_id" name="user_id" value="user123" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="course_id">コースID:</label>
                 <input type="text" id="course_id" name="course_id" value="python101" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="lesson_id">レッスンID:</label>
                 <input type="text" id="lesson_id" name="lesson_id" value="lesson5" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="progress">進捗度 (0-100):</label>
                 <input type="number" id="progress" name="progress" min="0" max="100" value="75" required>
             </div>
-            
+
             <button type="submit" id="sendProgress">進捗データを送信</button>
         </form>
     </div>
@@ -136,7 +136,7 @@
     <script>
         let socket = null;
         const clientId = 'test-client-' + Math.floor(Math.random() * 1000);
-        
+
         // DOM要素
         const connectBtn = document.getElementById('connect');
         const disconnectBtn = document.getElementById('disconnect');
@@ -145,17 +145,17 @@
         const messageForm = document.getElementById('messageForm');
         const messageInput = document.getElementById('messageInput');
         const progressForm = document.getElementById('progressForm');
-        
+
         // 接続ボタン
         connectBtn.addEventListener('click', () => {
             connect();
         });
-        
+
         // 切断ボタン
         disconnectBtn.addEventListener('click', () => {
             disconnect();
         });
-        
+
         // メッセージ送信フォーム
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -168,21 +168,21 @@
                 addMessage('エラー', 'WebSocketが接続されていません', 'error');
             }
         });
-        
+
         // 進捗データ送信フォーム
         progressForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const progressData = {
                 user_id: document.getElementById('user_id').value,
                 course_id: document.getElementById('course_id').value,
                 lesson_id: document.getElementById('lesson_id').value,
                 progress: parseInt(document.getElementById('progress').value)
             };
-            
+
             try {
                 addMessage('クライアント', `進捗データ送信: ${JSON.stringify(progressData)}`);
-                
+
                 const response = await fetch('/api/v1/progress/', {
                     method: 'POST',
                     headers: {
@@ -190,25 +190,25 @@
                     },
                     body: JSON.stringify(progressData)
                 });
-                
+
                 const result = await response.json();
                 addMessage('サーバー', `API応答: ${JSON.stringify(result)}`, 'server');
             } catch (error) {
                 addMessage('エラー', `進捗データ送信失敗: ${error}`, 'error');
             }
         });
-        
+
         // WebSocket接続
         function connect() {
             if (socket && socket.readyState === WebSocket.OPEN) {
                 addMessage('エラー', '既に接続されています', 'error');
                 return;
             }
-            
+
             // WebSocketエンドポイントに接続
             // 開発中はlocalhostだが、実際のドメインに合わせて調整
             socket = new WebSocket(`ws://${window.location.host}/api/v1/ws/${clientId}`);
-            
+
             socket.onopen = () => {
                 statusDiv.textContent = '接続状態: 接続済み';
                 statusDiv.style.color = 'green';
@@ -216,11 +216,11 @@
                 disconnectBtn.disabled = false;
                 addMessage('システム', '接続しました', 'server');
             };
-            
+
             socket.onmessage = (event) => {
                 addMessage('通知', event.data, 'notification');
             };
-            
+
             socket.onclose = () => {
                 statusDiv.textContent = '接続状態: 切断済み';
                 statusDiv.style.color = 'red';
@@ -229,14 +229,14 @@
                 addMessage('システム', '切断しました', 'server');
                 socket = null;
             };
-            
+
             socket.onerror = (error) => {
                 addMessage('エラー', 'WebSocketエラー: ' + JSON.stringify(error), 'error');
                 statusDiv.textContent = '接続状態: エラー';
                 statusDiv.style.color = 'red';
             };
         }
-        
+
         // 切断
         function disconnect() {
             if (socket) {
@@ -244,7 +244,7 @@
                 socket = null;
             }
         }
-        
+
         // メッセージ追加
         function addMessage(sender, text, className = '') {
             const message = document.createElement('div');

@@ -7,8 +7,9 @@ redis_pool = redis.ConnectionPool(
     host=settings.REDIS_HOST,
     port=settings.REDIS_PORT,
     db=0,  # デフォルトのデータベース番号
-    decode_responses=True
+    decode_responses=True,
 )
+
 
 def get_redis_client() -> redis.Redis:
     """
@@ -17,8 +18,12 @@ def get_redis_client() -> redis.Redis:
     """
     return redis.Redis(connection_pool=redis_pool)
 
+
 # 進捗イベントを発行するPub/Subチャンネル名
 PROGRESS_CHANNEL = "progress_events"
 
 # 処理完了をWebSocketクライアントに通知するためのチャンネル名
 NOTIFICATION_CHANNEL = "notifications"
+
+# エラーログを発行するPub/Subチャンネル名
+ERROR_CHANNEL = "error_logs"

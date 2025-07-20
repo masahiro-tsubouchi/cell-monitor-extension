@@ -1,36 +1,44 @@
 #!/bin/bash
 
-set -e # エラーがあった場合に即座に停止
+# エラーが発生した場合に即座にスクリプトを停止する
+set -e
 
-# 現在のユーザーのUID/GIDを環境変数にエクスポート
-# これにより、コンテナ内で生成されるファイルの所有者がホストユーザーと一致する
+echo "🚀 配布用JupyterLab拡張機能パッケージ (.whl) のビルドを開始します..."
+
+# --- 準備 ---
+# ホストマシンのユーザーIDとグループIDを環境変数に設定
+# これにより、Dockerコンテナ内で生成されるファイルの所有者がホストユーザーと一致する
 export HOST_UID=$(id -u)
 export HOST_GID=$(id -g)
 
-# 0. 古いdistディレクトリがあれば削除
-echo "=== 古いdistディレクトリをクリーンアップします ==="
-rm -rf ./cell-monitor-extension/dist
+echo "- ホストユーザー情報: UID=${HOST_UID}, GID=${HOST_GID}"
 
-# 1. 'extension-builder'サービスを実行してビルドを行う
-# --build: 実行前にイメージを強制的に再ビルド
+# 古いビルド成果物ディレクトリを削除してクリーンな状態から開始
+if [ -d "./cell-monitor-extension/dist" ]; then
+  echo "- 古い 'dist' ディレクトリをクリーンアップします。"
+  rm -rf ./cell-monitor-extension/dist
+fi
+
+# --- ビルド実行 ---
+echo "- Dockerコンテナ (extension-builder) を使用してビルドを実行します..."
+# --build: 実行前にイメージの再ビルドを強制
 # --rm: 実行後にコンテナを自動で削除
-echo "=== JupyterLab拡張機能のビルドを開始します ==="
 docker compose run --build --rm extension-builder
 
-echo "
-✅ ビルドが正常に完了しました！
-"
-echo "cell-monitor-extension/dist/ ディレクトリに生成されたパッケージを確認してください:"
-ls -la ./cell-monitor-extension/dist/
+# --- 結果確認 ---
+echo
+echo "✅ ビルドが正常に完了しました！"
+echo
+echo "📦 生成されたパッケージ:"
+ls -l ./cell-monitor-extension/dist/
 
-# 中身が空でないか最終チェック
-if [ -z "$(ls -A ./cell-monitor-extension/dist/)" ]; then
-  echo "
-❌ エラー: distディレクトリが空です。ビルドプロセスに問題がある可能性があります。"
+# 最終チェック: distディレクトリに.whlファイルが存在するか確認
+if ! ls ./cell-monitor-extension/dist/*.whl &> /dev/null; then
+  echo
+  echo "❌ エラー: .whl ファイルが 'dist' ディレクトリに見つかりません。ビルドプロセスに問題がある可能性があります。"
   exit 1
 fi
 
-echo ""
-echo "📦 拡張機能のインストール方法:"
-echo "   pip install ./cell-monitor-extension/dist/*.whl"
-echo "   jupyter labextension list   # インストール確認"
+echo
+echo "🎉 これで、生成された .whl ファイルを他の環境に配布・インストールできます。"
+echo "   インストールコマンドの例: pip install ./cell-monitor-extension/dist/cell_monitor-*.whl"

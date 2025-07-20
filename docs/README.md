@@ -1,74 +1,137 @@
-# プロジェクト説明書
+# JupyterLab Cell Monitor Extension - AI駆動開発プロジェクト
 
-## 1. 概要
+> **バージョン**: 2.0.0
+> **最終更新日**: 2025-01-18
+> **開発手法**: AI駆動開発 (AI-Driven Development)
 
-このプロジェクトは、JupyterLab環境でPython教育コンテンツを利用する生徒の学習進捗をリアルタイムで追跡・分析するためのシステムです。
+## 🎯 プロジェクト概要
 
-JupyterLab拡張機能がノートブック上での生徒のアクティビティ（セルの実行、ノートブックの開閉など）を検知し、その情報をバックエンドのFastAPIサーバーに送信します。収集されたデータは、教育者が生徒の理解度を把握したり、つまずいている箇所を特定したりするのに役立ちます。
+このプロジェクトは、JupyterLab環境でPython教育コンテンツを利用する生徒の学習進捗をリアルタイムで追跡・分析するためのシステムです。AI駆動開発の原則に基づき、段階的かつテスト駆動で開発を進めています。
 
-## 2. アーキテクチャ
+### 主要コンポーネント
 
-システムは主に3つのコンポーネントで構成されています。
+- **JupyterLab拡張機能** (`cell-monitor-extension`): TypeScriptで開発されたフロントエンドコンポーネント
+- **FastAPIサーバー** (`fastapi_server`): Pythonで構築されたバックエンドサーバー
+- **データベース層**: PostgreSQL（マスターデータ）+ InfluxDB（時系列データ）+ Redis（リアルタイム通信）
+- **ダッシュボード**: 講師向けリアルタイム可視化インターフェース
 
-- **JupyterLab拡張機能 (`cell-monitor-extension`)**: TypeScriptで開発されたフロントエンドコンポーネント。生徒のJupyterLab上でのアクションを監視し、データを収集します。
-- **FastAPIサーバー (`fastapi_server`)**: Pythonで構築されたバックエンドサーバー。拡張機能から送信されたデータを受け取り、処理します。
-- **Docker**: `docker-compose.yml` を使用して、上記2つのコンポーネントを連携させた開発・実行環境を構築します。
+## 🏗️ アーキテクチャ概要
 
 ```mermaid
 graph TD
-    A[生徒 @ JupyterLab] -- アクション --> B(cell-monitor-extension);
-    B -- HTTP POST --> C{FastAPI Server};
-    C -- ログ出力 --> D[コンソール];
+    subgraph "生徒環境"
+        A[JupyterLab Extension]
+    end
+
+    subgraph "サーバー環境"
+        B[FastAPI Server]
+        C[Redis Pub/Sub]
+        D[Async Worker]
+        E[PostgreSQL]
+        F[InfluxDB]
+        G[WebSocket Manager]
+    end
+
+    subgraph "講師環境"
+        H[講師用ダッシュボード]
+    end
+
+    A -->|POST /api/v1/events| B
+    B -->|Publish| C
+    C -->|Subscribe| D
+    D -->|永続化| E
+    D -->|時系列データ| F
+    B -->|リアルタイム通知| G
+    G -->|WebSocket| H
 ```
 
-## 3. データフロー
+## 🚀 クイックスタート
 
-1.  **イベント発生**: 生徒がJupyterLabでセルを実行、ノートブックを開く・保存・閉じるといった操作を行います。
-2.  **データ収集**: `cell-monitor-extension/src/index.ts` 内のイベントリスナーがこれらの操作を検知し、`IStudentProgressData` 形式でイベント詳細（ユーザーID, セルの中身, 実行結果など）をオブジェクトとして生成します。
-3.  **データ送信**: 生成されたデータは、HTTP POSTリクエストでFastAPIサーバーの `/student-progress` エンドポイントに送信されます。
-4.  **データ受信・処理**: FastAPIサーバー (`fastapi_server/main.py`) はデータを受け取り、現在はコンソールにログとして出力します。
+### 前提条件
 
-## 4. 実行方法
+- Docker & Docker Compose
+- Node.js 18+ (開発時)
+- Python 3.11+ (開発時)
 
-プロジェクトのルートディレクトリで以下のコマンドを実行することで、JupyterLabとFastAPIサーバーを起動します。
+### 環境起動
 
 ```bash
+# プロジェクトルートで実行
 docker-compose up --build
+
+# アクセス先
+# JupyterLab: http://localhost:8888 (token: easy)
+# FastAPI: http://localhost:8000
+# ダッシュボード: http://localhost:3000
 ```
 
-- JupyterLab: `http://localhost:8888` (トークン: `easy`)
-- FastAPIサーバー: `http://localhost:8000`
+### 拡張機能設定
 
-## 5. 設定
+JupyterLabの `Settings` > `Advanced Settings Editor` > `Cell Monitor` で以下を設定：
 
-JupyterLab拡張機能の動作は、JupyterLabの `Settings` > `Advanced Settings Editor` > `Cell Monitor` から変更できます。
+```json
+{
+  "serverUrl": "http://fastapi:8000/api/v1/events",
+  "userId": "",
+  "userName": "Anonymous"
+}
+```
 
-- **serverUrl**: データ送信先APIサーバーのURL (デフォルト: `http://localhost:8000/student-progress`)
-- **userId**: ユーザーを識別するためのID（空の場合は自動生成）
-- **userName**: ユーザーの表示名 (デフォルト: `Anonymous`)
+## 📚 ドキュメント構成
 
-## 6. 今後の開発方針（ベストプラクティス）
+### 基本ドキュメント
+- [アーキテクチャ設計](./architecture/README.md) - システム全体の設計思想
+- [開発計画](./development/DEVELOPMENT_PLAN.md) - フェーズ別開発ロードマップ
+- [API仕様](./api/README.md) - エンドポイント仕様書
 
-現状のシステムをより堅牢で実用的なものにするための提案です。
+### 開発者向け
+- [開発環境構築](./development/SETUP.md) - 開発環境のセットアップ
+- [テスト戦略](./testing/README.md) - テスト実行とCI/CD
+- [トラブルシューティング](./troubleshooting/README.md) - 問題解決ガイド
 
-1.  **データベースの導入**:
-    - 現在は受信データをログ出力していてだけですが、これをデータベース（例: PostgreSQL, SQLite）に永続化するべきです。
-    - `fastapi_server` にて、SQLAlchemyなどのORMを導入し、受信した `StudentProgressData` をテーブルに保存する処理を追加します。大規模なリアルタイム性を考慮したアーキテクチャについては、[リアルタイム進捗確認のためのDBアーキテクチャガイド](./DATABASE_ARCHITECTURE.md) を参照してください。さらに高度な技術（Redis, InfluxDB）との比較については、[DB技術選定ガイド](./DATABASE_COMPARISON.md)が参考になります。
+### AI駆動開発
+- [AI協調開発ガイド](./ai-driven/README.md) - AIとの効果的な協働方法
+- [プロンプトエンジニアリング](./ai-driven/PROMPTING.md) - 開発用プロンプト集
+- [コード生成戦略](./ai-driven/CODE_GENERATION.md) - AI活用のベストプラクティス
 
-2.  **データ分析・可視化機能の追加**:
-    - 保存したデータを分析し、教育者向けのダッシュボードを作成します。詳細な分析・可視化の手法については、[学習進捗データの分析と可視化ガイド](./ANALYSIS_GUIDE.md) を参照してください。
-    - FastAPIに新しいエンドポイントを追加し、生徒ごとの進捗状況やクラス全体の傾向などを返すAPIを実装します。
-    - フロントエンド側で、このAPIを叩いて結果を可視化するUIを構築します（例: Chart.js, D3.jsなどを利用）。
+### 分析・可視化
+- [データ分析ガイド](./analysis/README.md) - 学習進捗データの分析手法
+- [ダッシュボード仕様](./dashboard/README.md) - 可視化インターフェース
 
-3.  **認証・認可機能の強化**:
-    - 現在、APIは誰でもアクセス可能な状態です。JupyterLabからのリクエストであることを確認するためのAPIキーや、OAuthなどの認証メカニズムを導入します。
-    - `JUPYTER_TOKEN` も、より安全なものに変更し、本番環境では環境変数などから読み込むようにします。
+## 🎯 現在の開発状況
 
-4.  **テストの拡充**:
-    - `fastapi_server` に `pytest` を用いたAPIの単体テスト・結合テストを追加します。
-    - `cell-monitor-extension` にJestなどを用いたフロントエンドの単体テストを追加します。
+### ✅ 完了済み
+- [x] JupyterLab拡張機能の基本実装
+- [x] 統一イベントエンドポイント (`/api/v1/events`)
+- [x] Docker環境での開発・実行環境
+- [x] 基本的なデータ収集機能
 
-5.  **設定の柔軟性向上**:
-    - サーバーサイドでどのイベントを収集するか（例: `notebook_saved` は不要など）を選択できるような設定を追加します。
+### 🚧 進行中
+- [ ] 非同期Worker実装とDB永続化
+- [ ] WebSocketによるリアルタイム通知
+- [ ] 講師用ダッシュボードのプロトタイプ
 
-これらのステップを段階的に進めることで、より価値の高い学習分析プラットフォームへと発展させることができます。
+### 📋 今後の計画
+- [ ] 高度な分析機能（学習パターン分析）
+- [ ] 認証・認可システム
+- [ ] スケーラビリティ向上（マイクロサービス化）
+- [ ] AI支援による自動インサイト生成
+
+## 🤝 AI駆動開発の原則
+
+このプロジェクトでは以下の原則に基づいて開発を進めています：
+
+1. **インクリメンタルな指示**: 段階的な機能実装
+2. **テスト駆動開発**: AIによるテストコード生成と品質保証
+3. **ドキュメント同期**: コード変更と同時のドキュメント更新
+4. **継続的改善**: AIフィードバックによる設計改善
+
+## 📞 サポート
+
+- **Issue報告**: [GitHub Issues](https://github.com/your-repo/issues)
+- **開発相談**: [Discussions](https://github.com/your-repo/discussions)
+- **AI駆動開発**: [AI協調開発ガイド](./ai-driven/README.md)を参照
+
+---
+
+**注意**: このプロジェクトはAI駆動開発の実践例として構築されています。各ドキュメントには、AIとの協働における具体的な手法やベストプラクティスが含まれています。

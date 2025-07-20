@@ -1,6 +1,4 @@
 import asyncio
-import json
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -14,6 +12,9 @@ from db.redis_client import get_redis_client, NOTIFICATION_CHANNEL
 from db.base import Base
 from db.session import engine
 
+# モデルをインポートしてBase.metadata.create_all()でテーブルが作成されるようにする
+from db.models import Student, Class, ClassAssignment, AssignmentSubmission  # noqa
+
 
 async def redis_subscriber():
     """Redisの通知チャンネルを購読し、メッセージをWebSocketクライアントにブロードキャストする"""
@@ -23,10 +24,12 @@ async def redis_subscriber():
     print(f"Subscribed to '{NOTIFICATION_CHANNEL}' channel.")
     try:
         while True:
-            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+            message = await pubsub.get_message(
+                ignore_subscribe_messages=True, timeout=1.0
+            )
             if message and message.get("type") == "message":
                 print(f"Received notification: {message['data']}")
-                await manager.broadcast(message['data'].decode('utf-8'))
+                await manager.broadcast(message["data"].decode("utf-8"))
             await asyncio.sleep(0.01)
     except asyncio.CancelledError:
         print("Redis subscriber task cancelled.")
@@ -40,25 +43,25 @@ async def lifespan(app: FastAPI):
     """FastAPIアプリケーションのライフサイクルを管理するコンテキストマネージャー"""
     # アプリケーション起動時の処理
     print("Starting application...")
-    
+
     # データベーステーブルの作成
     Base.metadata.create_all(bind=engine)
     print("Database tables created")
-    
+
     # Redis購読タスクの作成と開始
     redis_subscriber_task = asyncio.create_task(redis_subscriber())
     print("Redis subscriber task started")
-    
+
     # アプリケーションの実行中はここでyield
     yield
-    
+
     # アプリケーション終了時の処理
     print("Shutting down application...")
-    
+
     # Redis購読タスクのクリーンアップ
     print("Cancelling Redis subscriber task...")
     redis_subscriber_task.cancel()
-    
+
     try:
         await redis_subscriber_task
     except asyncio.CancelledError:
@@ -72,7 +75,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS設定
@@ -90,6 +93,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # 静的ファイルディレクトリのマウント
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 # ルートエンドポイント
 @app.get("/")

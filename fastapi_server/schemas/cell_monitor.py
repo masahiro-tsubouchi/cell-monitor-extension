@@ -1,13 +1,14 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
 
 
 class CellMonitor(BaseModel):
     """
     Jupyter Cell Monitoring Schema
-    
+
     Stores information about cell execution, including content, outputs, and metadata
     """
+
     userId: Optional[str] = None
     notebookPath: Optional[str] = None
     cellId: Optional[str] = None

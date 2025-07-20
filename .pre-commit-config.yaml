@@ -1,0 +1,44 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-added-large-files
+
+-   repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+    -   id: black
+        files: ^fastapi_server/
+
+-   repo: https://github.com/pycqa/flake8
+    rev: 7.1.0
+    hooks:
+    -   id: flake8
+        files: ^fastapi_server/
+        args:
+        - --ignore=E501,W503
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.1
+    hooks:
+    -   id: mypy
+        args:
+            - --config-file=fastapi_server/mypy.ini
+        files: ^fastapi_server/
+        exclude: ^fastapi_server/worker/main\.py$|^fastapi_server/api/endpoints/cell_monitor\.py$
+        additional_dependencies: [
+            "pydantic",
+            "sqlalchemy",
+            "types-requests",
+            "types-redis"
+        ]
+
+-   repo: https://github.com/pycqa/bandit
+    rev: 1.7.9
+    hooks:
+    -   id: bandit
+        files: ^fastapi_server/
+        args: ["-s", "B101"]

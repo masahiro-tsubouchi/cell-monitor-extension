@@ -7,7 +7,8 @@ services:
     volumes:
       - ./notebooks:/notebooks
     environment:
-      - JUPYTER_TOKEN=easy  # 簡単なアクセストークン。本番環境では変更してください
+      - JUPYTER_TOKEN=easy
+      - CELL_MONITOR_TEST_MODE=true  # 簡単なアクセストークン。本番環境では変更してください
     depends_on:
       - fastapi
 
@@ -65,21 +66,18 @@ services:
     volumes:
       - redis_data:/data
 
-  # JupyterLab拡張機能ビルド用サービス
-  # extension-builder:
-  #   build:
-  #     context: ./cell-monitor-extension
-  #     dockerfile: Dockerfile.build
-  #   volumes:
-  #     # ソースコード全体をマウントすることで、コンテナ内でのビルド結果がホストに直接反映される
-  #     - ./cell-monitor-extension:/app
-  #   environment:
-  #     - HOST_UID=${HOST_UID:-1000}
-  #     - HOST_GID=${HOST_GID:-1000}
-  #   # デフォルトではコンテナが即終了しないように、常に起動しておくコマンド
-  #   privileged: true
-  #   # コンテナが終了しないようにttyを有効にする
-  #   tty: true
+  # --- 配布用パッケージビルド専用サービス ---
+  extension-builder:
+    build:
+      context: ./cell-monitor-extension
+      dockerfile: Dockerfile.build
+    volumes:
+      # ビルド成果物(.whl)をホストに反映させるためにマウント
+      - ./cell-monitor-extension:/app
+    environment:
+      # 生成されるファイルの所有者をホストユーザーに合わせる
+      - HOST_UID=${HOST_UID:-1000}
+      - HOST_GID=${HOST_GID:-1000}
 
 volumes:
   postgres_data:

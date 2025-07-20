@@ -1,0 +1,24 @@
+services:
+  fastapi:
+    build:
+      context: ./fastapi_server
+    volumes:
+      - ./fastapi_server:/app
+    environment:
+      - POSTGRES_DB=progress_db_test
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: progress_db_test
+    ports:
+      - "5433:5432" # ホストの5432と競合しないようにポートを変更
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_test_data:

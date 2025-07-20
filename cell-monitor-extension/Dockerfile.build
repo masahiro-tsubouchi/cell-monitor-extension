@@ -23,4 +23,3 @@ COPY . .
 # Set the default command to run the entire build process.
 # This will be executed when 'docker compose run' is called.
 CMD ["sh", "-c", "jlpm install && jlpm build && python -m build && chown -R ${HOST_UID:-1000}:${HOST_GID:-1000} /app/dist /app/pyproject.toml /app/lib"]
-
