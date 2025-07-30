@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>講師支援ダッシュボード - UIモック</title>
+    <style>
+        :root {
+            --primary: #1976d2;
+            --secondary: #dc004e;
+            --success: #2e7d32;
+            --warning: #ed6c02;
+            --error: #d32f2f;
+            --bg: #f5f5f5;
+            --paper: #ffffff;
+            --text: #212121;
+            --text-secondary: #757575;
+            --grey: #e0e0e0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+        .card {
+            background: var(--paper);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--grey);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            min-height: 48px;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-error { background: var(--error); color: white; }
+        .btn-outlined { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+
+        .status-chip {
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-available { background: rgba(46,125,50,0.12); color: var(--success); }
+        .status-in-session { background: rgba(237,108,2,0.12); color: var(--warning); }
+        .status-help-requested {
+            background: rgba(211,47,47,0.12);
+            color: var(--error);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        .grid { display: grid; gap: 24px; }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+        .seat-map {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 8px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .seat {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--paper);
+            border: 2px solid var(--grey);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .seat:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.2); transform: translateY(-1px); }
+        .seat.occupied { background: var(--primary); color: white; border-color: var(--primary); }
+        .seat.help-requested {
+            background: var(--error);
+            color: white;
+            border-color: var(--error);
+            animation: pulse 2s infinite;
+        }
+        .seat.help-requested::after {
+            content: '🆘';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            font-size: 12px;
+        }
+
+        .help-request-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #fafafa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 4px solid var(--error);
+        }
+
+        .mobile-only { display: none; }
+
+        @media (max-width: 768px) {
+            .main { padding: 16px; }
+            .card { padding: 16px; }
+            .seat-map { grid-template-columns: repeat(8, 1fr); gap: 4px; }
+            .grid-2, .grid-4 { grid-template-columns: 1fr; }
+            .mobile-only { display: block; }
+            .desktop-only { display: none; }
+
+            .status-buttons {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+                margin: 24px 0;
+            }
+
+            .status-button {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 24px;
+                border: 2px solid var(--grey);
+                border-radius: 12px;
+                background: var(--paper);
+                cursor: pointer;
+                min-height: 100px;
+                text-align: center;
+            }
+
+            .status-button.active {
+                border-color: var(--primary);
+                background: var(--primary);
+                color: white;
+            }
+        }
+
+        .notification {
+            background: var(--warning);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .text-center { text-align: center; }
+        .mb-lg { margin-bottom: 24px; }
+        .mt-sm { margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>講師支援ダッシュボード</h1>
+        <div style="display: flex; gap: 16px; align-items: center;">
+            <span class="status-chip status-available" id="header-status">AVAILABLE</span>
+            <button class="btn btn-outlined" onclick="logout()">ログアウト</button>
+        </div>
+    </div>
+
+    <main class="main">
+        <!-- Mobile Status Panel -->
+        <div class="mobile-only">
+            <div class="card">
+                <h2 class="card-title">ステータス管理</h2>
+
+                <div class="text-center mb-lg">
+                    <h3>現在のステータス</h3>
+                    <span class="status-chip status-available" id="current-status">AVAILABLE</span>
+                </div>
+
+                <div class="status-buttons">
+                    <div class="status-button active" onclick="changeStatus('available')">
+                        <div style="font-size: 32px; margin-bottom: 8px;">✅</div>
+                        <div>対応可能</div>
+                    </div>
+                    <div class="status-button" onclick="changeStatus('in-session')">
+                        <div style="font-size: 32px; margin-bottom: 8px;">👨‍🏫</div>
+                        <div>指導中</div>
+                    </div>
+                    <div class="status-button" onclick="changeStatus('break')">
+                        <div style="font-size: 32px; margin-bottom: 8px;">☕</div>
+                        <div>休憩中</div>
+                    </div>
+                    <div class="status-button" onclick="changeStatus('offline')">
+                        <div style="font-size: 32px; margin-bottom: 8px;">🚫</div>
+                        <div>対応不可</div>
+                    </div>
+                </div>
+
+                <div id="mobile-help-alert" class="notification" style="display: none;">
+                    <strong>ヘルプ要請あり</strong><br>
+                    <span id="mobile-help-count">0</span>件のヘルプ要請があります
+                    <button class="btn btn-primary mt-sm" onclick="openDashboard()">確認</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Dashboard -->
+        <div class="desktop-only">
+            <!-- Overview Cards -->
+            <div class="grid grid-4 mb-lg">
+                <div class="card text-center">
+                    <h3 class="card-title">総座席数</h3>
+                    <div style="font-size: 2rem; font-weight: 600; color: var(--primary);">200</div>
+                    <div style="color: var(--text-secondary);">席</div>
+                </div>
+                <div class="card text-center">
+                    <h3 class="card-title">在席学生</h3>
+                    <div style="font-size: 2rem; font-weight: 600; color: var(--success);">156</div>
+                    <div style="color: var(--text-secondary);">名</div>
+                </div>
+                <div class="card text-center">
+                    <h3 class="card-title">ヘルプ要請</h3>
+                    <div style="font-size: 2rem; font-weight: 600; color: var(--error);" id="help-count">3</div>
+                    <div style="color: var(--text-secondary);">件</div>
+                </div>
+                <div class="card text-center">
+                    <h3 class="card-title">講師ステータス</h3>
+                    <span class="status-chip status-available">AVAILABLE</span>
+                </div>
+            </div>
+
+            <!-- Main Dashboard -->
+            <div class="grid grid-2">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 class="card-title" style="margin: 0;">座席マップ</h2>
+                        <button class="btn btn-outlined">レイアウト編集</button>
+                    </div>
+                    <div class="seat-map" id="seat-map"></div>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 class="card-title" style="margin: 0;">ヘルプ要請一覧</h2>
+                        <button class="btn btn-primary" onclick="refreshHelp()">更新</button>
+                    </div>
+                    <div id="help-list"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const seats = [
+            {id: 'A-01', student: '田中太郎', status: 'occupied'},
+            {id: 'A-02', student: '佐藤花子', status: 'help-requested'},
+            {id: 'A-03', student: '鈴木一郎', status: 'occupied'},
+            {id: 'A-06', student: '田村健太', status: 'help-requested'},
+            {id: 'A-10', student: '小林恵美', status: 'help-requested'}
+        ];
+
+        const helpRequests = [
+            {seat: 'A-02', student: '佐藤花子', time: '2分前', issue: 'エラーが解決できません'},
+            {seat: 'A-06', student: '田村健太', time: '5分前', issue: '次の手順がわかりません'},
+            {seat: 'A-10', student: '小林恵美', time: '1分前', issue: 'コードが動きません'}
+        ];
+
+        function initSeatMap() {
+            const seatMap = document.getElementById('seat-map');
+            if (!seatMap) return;
+
+            for (let i = 1; i <= 50; i++) {
+                const seatId = `A-${i.toString().padStart(2, '0')}`;
+                const seatData = seats.find(s => s.id === seatId) || {id: seatId, status: 'empty'};
+
+                const seat = document.createElement('div');
+                seat.className = `seat ${seatData.status}`;
+                seat.textContent = seatId;
+                seat.title = seatData.student ? `${seatId}: ${seatData.student}` : `${seatId}: 空席`;
+                seat.onclick = () => selectSeat(seatId);
+
+                seatMap.appendChild(seat);
+            }
+        }
+
+        function initHelpList() {
+            const helpList = document.getElementById('help-list');
+            if (!helpList) return;
+
+            helpList.innerHTML = '';
+            helpRequests.forEach(req => {
+                const item = document.createElement('div');
+                item.className = 'help-request-item';
+                item.innerHTML = `
+                    <div>
+                        <div style="font-weight: 600; color: var(--error);">座席 ${req.seat}</div>
+                        <div style="color: var(--text-secondary);">${req.student}</div>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">${req.time} - ${req.issue}</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="respondToHelp('${req.seat}')">対応</button>
+                `;
+                helpList.appendChild(item);
+            });
+        }
+
+        function updateHelpCount() {
+            const count = helpRequests.length;
+            document.getElementById('help-count').textContent = count;
+            document.getElementById('mobile-help-count').textContent = count;
+
+            const alert = document.getElementById('mobile-help-alert');
+            if (count > 0) {
+                alert.style.display = 'block';
+            } else {
+                alert.style.display = 'none';
+            }
+        }
+
+        function changeStatus(status) {
+            const buttons = document.querySelectorAll('.status-button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.status-button').classList.add('active');
+
+            const statusMap = {
+                'available': 'AVAILABLE',
+                'in-session': 'IN_SESSION',
+                'break': 'BREAK',
+                'offline': 'OFFLINE'
+            };
+
+            document.getElementById('current-status').textContent = statusMap[status];
+            document.getElementById('header-status').textContent = statusMap[status];
+
+            console.log(`Status changed to: ${status}`);
+        }
+
+        function selectSeat(seatId) {
+            console.log(`Selected seat: ${seatId}`);
+            alert(`座席 ${seatId} を選択しました`);
+        }
+
+        function respondToHelp(seatId) {
+            console.log(`Responding to help request from seat: ${seatId}`);
+            alert(`座席 ${seatId} のヘルプ要請に対応します`);
+        }
+
+        function refreshHelp() {
+            console.log('Refreshing help requests...');
+            // シミュレーション: 新しいヘルプ要請を追加
+            setTimeout(() => {
+                alert('ヘルプ要請を更新しました');
+            }, 500);
+        }
+
+        function openDashboard() {
+            console.log('Opening full dashboard...');
+            alert('フルダッシュボードを開きます');
+        }
+
+        function logout() {
+            console.log('Logging out...');
+            alert('ログアウトします');
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            initSeatMap();
+            initHelpList();
+            updateHelpCount();
+
+            // WebSocket接続シミュレーション
+            setInterval(() => {
+                console.log('WebSocket heartbeat - connected');
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

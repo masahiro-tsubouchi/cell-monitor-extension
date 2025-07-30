@@ -27,7 +27,9 @@ def get_class(db: Session, class_id: int) -> Optional[Class]:
     return db.query(Class).filter(Class.id == class_id).first()
 
 
-def update_class(db: Session, class_id: int, class_update: ClassUpdate) -> Optional[Class]:
+def update_class(
+    db: Session, class_id: int, class_update: ClassUpdate
+) -> Optional[Class]:
     """
     クラス情報を更新する
     """

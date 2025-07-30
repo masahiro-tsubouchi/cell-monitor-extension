@@ -19,7 +19,7 @@ from schemas.environment import (
     PackageInfo,
     PythonEnvironmentInfo,
     SystemEnvironmentInfo,
-    JupyterEnvironmentInfo
+    JupyterEnvironmentInfo,
 )
 
 client = TestClient(app)
@@ -41,10 +41,18 @@ class TestEnvironmentCurrentAPI:
                 "conda_env": None,
                 "pip_version": "21.3.1",
                 "key_packages": [
-                    {"name": "numpy", "version": "1.21.0", "location": "/usr/local/lib/python3.9/site-packages"},
-                    {"name": "pandas", "version": "1.3.3", "location": "/usr/local/lib/python3.9/site-packages"}
+                    {
+                        "name": "numpy",
+                        "version": "1.21.0",
+                        "location": "/usr/local/lib/python3.9/site-packages",
+                    },
+                    {
+                        "name": "pandas",
+                        "version": "1.3.3",
+                        "location": "/usr/local/lib/python3.9/site-packages",
+                    },
                 ],
-                "total_packages_count": 150
+                "total_packages_count": 150,
             },
             "system_env": {
                 "os_name": "Darwin",
@@ -52,7 +60,7 @@ class TestEnvironmentCurrentAPI:
                 "platform": "darwin",
                 "architecture": "x86_64",
                 "cpu_count": 8,
-                "memory_total_gb": 16.0
+                "memory_total_gb": 16.0,
             },
             "jupyter_env": {
                 "jupyterlab_version": "3.2.1",
@@ -60,13 +68,15 @@ class TestEnvironmentCurrentAPI:
                 "ipython_version": "7.28.0",
                 "kernel_name": "python3",
                 "kernel_id": "kernel_001",
-                "extensions": []
+                "extensions": [],
             },
             "is_full_snapshot": True,
-            "collection_duration_ms": 1250.5
+            "collection_duration_ms": 1250.5,
         }
 
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect:
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect:
             mock_snapshot_data = {
                 "snapshot_id": "test_snapshot_001",
                 "captured_at": datetime.now(),
@@ -75,7 +85,7 @@ class TestEnvironmentCurrentAPI:
                     python_implementation="CPython",
                     python_executable="/usr/bin/python3",
                     key_packages=[],
-                    total_packages_count=100
+                    total_packages_count=100,
                 ),
                 "system_env": SystemEnvironmentInfo(
                     os_name="Darwin",
@@ -83,12 +93,14 @@ class TestEnvironmentCurrentAPI:
                     platform="darwin",
                     architecture="x86_64",
                     cpu_count=8,
-                    memory_total_gb=16.0
+                    memory_total_gb=16.0,
                 ),
                 "jupyter_env": JupyterEnvironmentInfo(),
-                "collection_duration_ms": 1000.0
+                "collection_duration_ms": 1000.0,
             }
-            mock_collect.return_value = ExecutionEnvironmentSnapshot(**mock_snapshot_data)
+            mock_collect.return_value = ExecutionEnvironmentSnapshot(
+                **mock_snapshot_data
+            )
 
             response = client.get("/api/v1/v1/environment/current")
 
@@ -101,7 +113,9 @@ class TestEnvironmentCurrentAPI:
 
     def test_get_current_environment_error(self):
         """異常系: 環境情報取得でエラーが発生した場合の処理"""
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect:
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect:
             mock_collect.side_effect = Exception("Environment collection failed")
 
             response = client.get("/api/v1/v1/environment/current")
@@ -120,7 +134,7 @@ class TestEnvironmentSnapshotAPI:
             "notebook_path": "/test/notebook.ipynb",
             "cell_id": "cell-001",
             "execution_count": 5,
-            "force_full_collection": False
+            "force_full_collection": False,
         }
 
         # Create mock snapshot object that matches ExecutionEnvironmentSnapshot
@@ -138,31 +152,31 @@ class TestEnvironmentSnapshotAPI:
                 "python_implementation": "CPython",
                 "python_executable": "/usr/local/bin/python3.12",
                 "key_packages": [],
-                "total_packages_count": 0
+                "total_packages_count": 0,
             },
-            "system_info": {
-                "platform": "Linux",
-                "architecture": "x86_64"
-            },
+            "system_info": {"platform": "Linux", "architecture": "x86_64"},
             "system_env": {
                 "os_name": "Linux",
                 "os_version": "5.4.0",
                 "platform": "linux",
                 "architecture": "x86_64",
                 "environment_variables": {},
-                "path_variables": []
+                "path_variables": [],
             },
-            "jupyter_env": {
-                "jupyter_version": "7.0.0",
-                "extensions": []
-            }
+            "jupyter_env": {"jupyter_version": "7.0.0", "extensions": []},
         }
 
-        with patch('api.endpoints.environment.environment_collector.collect_environment_snapshot') as mock_create:
-            mock_create.return_value = ExecutionEnvironmentSnapshot(**mock_snapshot_data)
+        with patch(
+            "api.endpoints.environment.environment_collector.collect_environment_snapshot"
+        ) as mock_create:
+            mock_create.return_value = ExecutionEnvironmentSnapshot(
+                **mock_snapshot_data
+            )
 
             # Use query parameters instead of JSON body for snapshot creation
-            snapshot_response = client.post("/api/v1/v1/environment/snapshot?notebook_path=/test/notebook.ipynb&cell_id=cell-001&execution_count=5")
+            snapshot_response = client.post(
+                "/api/v1/v1/environment/snapshot?notebook_path=/test/notebook.ipynb&cell_id=cell-001&execution_count=5"
+            )
             assert snapshot_response.status_code == 201
             response_data = snapshot_response.json()
             assert "message" in response_data
@@ -189,31 +203,31 @@ class TestEnvironmentSnapshotAPI:
                 "python_implementation": "CPython",
                 "python_executable": "/usr/local/bin/python3.12",
                 "key_packages": [],
-                "total_packages_count": 0
+                "total_packages_count": 0,
             },
-            "system_info": {
-                "platform": "Linux",
-                "architecture": "x86_64"
-            },
+            "system_info": {"platform": "Linux", "architecture": "x86_64"},
             "system_env": {
                 "os_name": "Linux",
                 "os_version": "5.4.0",
                 "platform": "linux",
                 "architecture": "x86_64",
                 "environment_variables": {},
-                "path_variables": []
+                "path_variables": [],
             },
-            "jupyter_env": {
-                "jupyter_version": "7.0.0",
-                "extensions": []
-            }
+            "jupyter_env": {"jupyter_version": "7.0.0", "extensions": []},
         }
 
-        with patch('api.endpoints.environment.environment_collector.collect_environment_snapshot') as mock_create:
-            mock_create.return_value = ExecutionEnvironmentSnapshot(**mock_snapshot_data)
+        with patch(
+            "api.endpoints.environment.environment_collector.collect_environment_snapshot"
+        ) as mock_create:
+            mock_create.return_value = ExecutionEnvironmentSnapshot(
+                **mock_snapshot_data
+            )
 
             # Use query parameters for force_full_collection
-            snapshot_response = client.post("/api/v1/v1/environment/snapshot?force_full_collection=true")
+            snapshot_response = client.post(
+                "/api/v1/v1/environment/snapshot?force_full_collection=true"
+            )
             assert snapshot_response.status_code == 201
             response_data = snapshot_response.json()
             assert "snapshot_id" in response_data
@@ -222,17 +236,22 @@ class TestEnvironmentSnapshotAPI:
                 notebook_path=None,
                 cell_id=None,
                 execution_count=None,
-                force_full_collection=True
+                force_full_collection=True,
             )
 
     def test_create_environment_snapshot_error(self):
         """異常系: スナップショット作成でエラーが発生した場合の処理"""
         request_data = {"notebook_path": "/test/notebook.ipynb"}
 
-        with patch('api.endpoints.environment.environment_collector.collect_environment_snapshot') as mock_create:
+        with patch(
+            "api.endpoints.environment.environment_collector.collect_environment_snapshot"
+        ) as mock_create:
             mock_create.side_effect = Exception("Snapshot creation failed")
 
-            snapshot_response = client.post("/api/v1/v1/environment/snapshot", json={"description": "Test snapshot", "is_full_snapshot": True})
+            snapshot_response = client.post(
+                "/api/v1/v1/environment/snapshot",
+                json={"description": "Test snapshot", "is_full_snapshot": True},
+            )
             assert snapshot_response.status_code == 500
             response_data = snapshot_response.json()
             assert "Failed to create environment snapshot" in response_data["detail"]
@@ -244,17 +263,31 @@ class TestEnvironmentPackageAPI:
     def test_get_package_information_specific_packages(self):
         """正常系: 特定パッケージの情報が正常に取得できること"""
         mock_packages = {
-            "numpy": {"name": "numpy", "version": "1.21.0", "location": "/usr/local/lib/python3.9/site-packages"},
-            "pandas": {"name": "pandas", "version": "1.3.3", "location": "/usr/local/lib/python3.9/site-packages"}
+            "numpy": {
+                "name": "numpy",
+                "version": "1.21.0",
+                "location": "/usr/local/lib/python3.9/site-packages",
+            },
+            "pandas": {
+                "name": "pandas",
+                "version": "1.3.3",
+                "location": "/usr/local/lib/python3.9/site-packages",
+            },
         }
 
-        with patch('api.endpoints.environment.environment_collector._collect_package_info') as mock_get_pkg:
+        with patch(
+            "api.endpoints.environment.environment_collector._collect_package_info"
+        ) as mock_get_pkg:
             # _collect_package_info returns (packages_list, total_count)
-            mock_packages_list = [PackageInfo(name="numpy", version="1.21.0", location="/usr/local/lib"), 
-                                 PackageInfo(name="pandas", version="1.3.3", location="/usr/local/lib")]
+            mock_packages_list = [
+                PackageInfo(name="numpy", version="1.21.0", location="/usr/local/lib"),
+                PackageInfo(name="pandas", version="1.3.3", location="/usr/local/lib"),
+            ]
             mock_get_pkg.return_value = (mock_packages_list, 2)
 
-            response = client.get("/api/v1/v1/environment/packages?package_names=numpy&package_names=pandas")
+            response = client.get(
+                "/api/v1/v1/environment/packages?package_names=numpy&package_names=pandas"
+            )
 
             assert response.status_code == 200
             response_data = response.json()
@@ -263,18 +296,32 @@ class TestEnvironmentPackageAPI:
             package_names = [pkg["name"] for pkg in response_data["packages"]]
             assert "numpy" in package_names
             assert "pandas" in package_names
-            numpy_pkg = next(pkg for pkg in response_data["packages"] if pkg["name"] == "numpy")
-            pandas_pkg = next(pkg for pkg in response_data["packages"] if pkg["name"] == "pandas")
+            numpy_pkg = next(
+                pkg for pkg in response_data["packages"] if pkg["name"] == "numpy"
+            )
+            pandas_pkg = next(
+                pkg for pkg in response_data["packages"] if pkg["name"] == "pandas"
+            )
             assert numpy_pkg["version"] == "1.21.0"
             assert pandas_pkg["version"] == "1.3.3"
 
     def test_get_package_information_all_packages(self):
         """正常系: 全パッケージ情報が正常に取得できること"""
-        mock_all_packages = {f"package_{i}": {"name": f"package_{i}", "version": "1.0.0"} for i in range(100)}
+        mock_all_packages = {
+            f"package_{i}": {"name": f"package_{i}", "version": "1.0.0"}
+            for i in range(100)
+        }
 
-        with patch('api.endpoints.environment.environment_collector._collect_package_info') as mock_get_all:
+        with patch(
+            "api.endpoints.environment.environment_collector._collect_package_info"
+        ) as mock_get_all:
             # _collect_package_info returns (packages_list, total_count)
-            mock_packages_list = [PackageInfo(name=f"package_{i}", version="1.0.0", location="/usr/local/lib") for i in range(100)]
+            mock_packages_list = [
+                PackageInfo(
+                    name=f"package_{i}", version="1.0.0", location="/usr/local/lib"
+                )
+                for i in range(100)
+            ]
             mock_get_all.return_value = (mock_packages_list, 100)
 
             response = client.get("/api/v1/v1/environment/packages?include_all=true")
@@ -289,7 +336,9 @@ class TestEnvironmentPackageAPI:
 
     def test_get_package_information_error(self):
         """異常系: パッケージ情報取得でエラーが発生した場合の処理"""
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect:
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect:
             mock_collect.side_effect = Exception("Package info collection failed")
 
             response = client.get("/api/v1/v1/environment/packages?package_names=numpy")
@@ -313,13 +362,17 @@ class TestEnvironmentHealthAPI:
             "details": {
                 "python_score": 0.8,
                 "packages_score": 0.9,
-                "system_score": 0.85
-            }
+                "system_score": 0.85,
+            },
         }
 
-        with patch('api.endpoints.environment._calculate_environment_health_score') as mock_score, \
-             patch('api.endpoints.environment._generate_environment_recommendations') as mock_recommendations, \
-             patch('api.endpoints.environment._detect_environment_warnings') as mock_warnings:
+        with patch(
+            "api.endpoints.environment._calculate_environment_health_score"
+        ) as mock_score, patch(
+            "api.endpoints.environment._generate_environment_recommendations"
+        ) as mock_recommendations, patch(
+            "api.endpoints.environment._detect_environment_warnings"
+        ) as mock_warnings:
             mock_score.return_value = mock_health_result["health_score"]
             mock_recommendations.return_value = mock_health_result["recommendations"]
             mock_warnings.return_value = mock_health_result["warnings"]
@@ -338,13 +391,23 @@ class TestEnvironmentHealthAPI:
         mock_health_result = {
             "health_score": 0.3,
             "status": "critical",
-            "warnings": ["Multiple package conflicts detected", "Memory usage is critically high"],
-            "recommendations": ["Resolve package conflicts immediately", "Restart kernel to free memory"]
+            "warnings": [
+                "Multiple package conflicts detected",
+                "Memory usage is critically high",
+            ],
+            "recommendations": [
+                "Resolve package conflicts immediately",
+                "Restart kernel to free memory",
+            ],
         }
 
-        with patch('api.endpoints.environment._calculate_environment_health_score') as mock_score, \
-             patch('api.endpoints.environment._generate_environment_recommendations') as mock_recommendations, \
-             patch('api.endpoints.environment._detect_environment_warnings') as mock_warnings:
+        with patch(
+            "api.endpoints.environment._calculate_environment_health_score"
+        ) as mock_score, patch(
+            "api.endpoints.environment._generate_environment_recommendations"
+        ) as mock_recommendations, patch(
+            "api.endpoints.environment._detect_environment_warnings"
+        ) as mock_warnings:
             mock_score.return_value = mock_health_result["health_score"]
             mock_recommendations.return_value = mock_health_result["recommendations"]
             mock_warnings.return_value = mock_health_result["warnings"]
@@ -359,9 +422,13 @@ class TestEnvironmentHealthAPI:
 
     def test_check_environment_health_error(self):
         """異常系: 健全性チェックでエラーが発生した場合の処理"""
-        with patch('api.endpoints.environment._calculate_environment_health_score') as mock_score, \
-             patch('api.endpoints.environment._generate_environment_recommendations') as mock_recommendations, \
-             patch('api.endpoints.environment._detect_environment_warnings') as mock_warnings:
+        with patch(
+            "api.endpoints.environment._calculate_environment_health_score"
+        ) as mock_score, patch(
+            "api.endpoints.environment._generate_environment_recommendations"
+        ) as mock_recommendations, patch(
+            "api.endpoints.environment._detect_environment_warnings"
+        ) as mock_warnings:
             mock_score.side_effect = Exception("Health check failed")
 
             response = client.get("/api/v1/v1/environment/health")
@@ -377,9 +444,12 @@ class TestEnvironmentDiffAPI:
     def test_get_environment_diff_by_snapshot_id(self):
         """正常系: スナップショットID指定での差分取得が正常に動作すること"""
         # Test the case where no previous snapshot exists (common scenario)
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect, \
-             patch('api.endpoints.environment.environment_collector._last_snapshot', None):
-            
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect, patch(
+            "api.endpoints.environment.environment_collector._last_snapshot", None
+        ):
+
             # Create complete mock current snapshot
             mock_snapshot_data = {
                 "snapshot_id": "current_snapshot_001",
@@ -395,28 +465,26 @@ class TestEnvironmentDiffAPI:
                     "python_implementation": "CPython",
                     "python_executable": "/usr/local/bin/python3.12",
                     "key_packages": [],
-                    "total_packages_count": 100
+                    "total_packages_count": 100,
                 },
-                "system_info": {
-                    "platform": "Linux",
-                    "architecture": "x86_64"
-                },
+                "system_info": {"platform": "Linux", "architecture": "x86_64"},
                 "system_env": {
                     "os_name": "Linux",
                     "os_version": "5.4.0",
                     "platform": "linux",
                     "architecture": "x86_64",
                     "environment_variables": {},
-                    "path_variables": []
+                    "path_variables": [],
                 },
-                "jupyter_env": {
-                    "jupyter_version": "7.0.0",
-                    "extensions": []
-                }
+                "jupyter_env": {"jupyter_version": "7.0.0", "extensions": []},
             }
-            mock_collect.return_value = ExecutionEnvironmentSnapshot(**mock_snapshot_data)
+            mock_collect.return_value = ExecutionEnvironmentSnapshot(
+                **mock_snapshot_data
+            )
 
-            response = client.get("/api/v1/v1/environment/diff?from_snapshot_id=env_snapshot_001")
+            response = client.get(
+                "/api/v1/v1/environment/diff?from_snapshot_id=env_snapshot_001"
+            )
 
             assert response.status_code == 200
             response_data = response.json()
@@ -429,9 +497,12 @@ class TestEnvironmentDiffAPI:
     def test_get_environment_diff_by_hours_back(self):
         """正常系: 時間指定での差分取得が正常に動作すること"""
         # Test the case where no previous snapshot exists (common scenario)
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect, \
-             patch('api.endpoints.environment.environment_collector._last_snapshot', None):
-            
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect, patch(
+            "api.endpoints.environment.environment_collector._last_snapshot", None
+        ):
+
             # Create complete mock current snapshot
             mock_snapshot_data = {
                 "snapshot_id": "current_snapshot_002",
@@ -447,26 +518,22 @@ class TestEnvironmentDiffAPI:
                     "python_implementation": "CPython",
                     "python_executable": "/usr/local/bin/python3.12",
                     "key_packages": [],
-                    "total_packages_count": 100
+                    "total_packages_count": 100,
                 },
-                "system_info": {
-                    "platform": "Linux",
-                    "architecture": "x86_64"
-                },
+                "system_info": {"platform": "Linux", "architecture": "x86_64"},
                 "system_env": {
                     "os_name": "Linux",
                     "os_version": "5.4.0",
                     "platform": "linux",
                     "architecture": "x86_64",
                     "environment_variables": {},
-                    "path_variables": []
+                    "path_variables": [],
                 },
-                "jupyter_env": {
-                    "jupyter_version": "7.0.0",
-                    "extensions": []
-                }
+                "jupyter_env": {"jupyter_version": "7.0.0", "extensions": []},
             }
-            mock_collect.return_value = ExecutionEnvironmentSnapshot(**mock_snapshot_data)
+            mock_collect.return_value = ExecutionEnvironmentSnapshot(
+                **mock_snapshot_data
+            )
 
             response = client.get("/api/v1/v1/environment/diff?hours_back=24")
 
@@ -487,10 +554,14 @@ class TestEnvironmentDiffAPI:
 
     def test_get_environment_diff_error(self):
         """異常系: 差分取得でエラーが発生した場合の処理"""
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect:
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect:
             mock_collect.side_effect = Exception("Environment collection failed")
 
-            response = client.get("/api/v1/v1/environment/diff?from_snapshot_id=invalid_id")
+            response = client.get(
+                "/api/v1/v1/environment/diff?from_snapshot_id=invalid_id"
+            )
 
             assert response.status_code == 500
             response_data = response.json()
@@ -509,22 +580,24 @@ class TestEnvironmentAnalysisAPI:
             "environment_health_score": 0.78,
             "recommendations": [
                 "Consider upgrading numpy to latest version",
-                "Remove unused packages to optimize performance"
+                "Remove unused packages to optimize performance",
             ],
             "warnings": ["Package version conflict detected between scipy and numpy"],
             "performance_indicators": {
                 "memory_efficiency": 0.85,
                 "package_optimization_level": 0.7,
-                "startup_time_score": 0.8
+                "startup_time_score": 0.8,
             },
             "compatibility_info": {
                 "python_compatibility": "excellent",
                 "package_conflicts": 1,
-                "jupyter_compatibility": "good"
-            }
+                "jupyter_compatibility": "good",
+            },
         }
 
-        with patch('api.endpoints.environment._perform_environment_analysis') as mock_analyze:
+        with patch(
+            "api.endpoints.environment._perform_environment_analysis"
+        ) as mock_analyze:
             mock_analyze.return_value = mock_analysis
 
             response = client.post("/api/v1/v1/environment/analyze")
@@ -538,7 +611,9 @@ class TestEnvironmentAnalysisAPI:
 
     def test_analyze_environment_error(self):
         """異常系: 環境分析でエラーが発生した場合の処理"""
-        with patch('api.endpoints.environment._perform_environment_analysis') as mock_analyze:
+        with patch(
+            "api.endpoints.environment._perform_environment_analysis"
+        ) as mock_analyze:
             mock_analyze.side_effect = Exception("Analysis failed")
 
             response = client.post("/api/v1/v1/environment/analyze")
@@ -554,7 +629,9 @@ class TestEnvironmentIntegration:
     def test_full_environment_workflow(self):
         """統合テスト: 環境情報収集→分析→差分取得の一連の流れ"""
         # 1. 現在の環境情報を取得
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect:
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect:
             mock_snapshot = ExecutionEnvironmentSnapshot(
                 snapshot_id="integration_test_001",
                 captured_at=datetime.now(),
@@ -563,7 +640,7 @@ class TestEnvironmentIntegration:
                     python_implementation="CPython",
                     python_executable="/usr/bin/python3",
                     key_packages=[],
-                    total_packages_count=100
+                    total_packages_count=100,
                 ),
                 system_env=SystemEnvironmentInfo(
                     os_name="Darwin",
@@ -571,10 +648,10 @@ class TestEnvironmentIntegration:
                     platform="darwin",
                     architecture="x86_64",
                     cpu_count=8,
-                    memory_total_gb=16.0
+                    memory_total_gb=16.0,
                 ),
                 jupyter_env=JupyterEnvironmentInfo(),
-                collection_duration_ms=1000.0
+                collection_duration_ms=1000.0,
             )
             mock_collect.return_value = mock_snapshot
 
@@ -582,7 +659,9 @@ class TestEnvironmentIntegration:
             assert current_response.status_code == 200
 
         # 2. 環境分析を実行
-        with patch('api.endpoints.environment._perform_environment_analysis') as mock_analyze:
+        with patch(
+            "api.endpoints.environment._perform_environment_analysis"
+        ) as mock_analyze:
             mock_analyze.return_value = {
                 "analysis_id": "integration_analysis_001",
                 "analyzed_at": datetime.now().isoformat(),
@@ -591,18 +670,25 @@ class TestEnvironmentIntegration:
                 "recommendations": [],
                 "warnings": [],
                 "performance_indicators": {},
-                "compatibility_info": {}
+                "compatibility_info": {},
             }
 
             analyze_response = client.post("/api/v1/v1/environment/analyze")
             assert analyze_response.status_code == 200
 
         # 3. 健全性チェックを実行
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect_health, \
-             patch('api.endpoints.environment._calculate_environment_health_score') as mock_score, \
-             patch('api.endpoints.environment._generate_environment_recommendations') as mock_recommendations, \
-             patch('api.endpoints.environment._detect_environment_warnings') as mock_warnings:
-            mock_collect_health.return_value = ExecutionEnvironmentSnapshot(**mock_snapshot.model_dump())
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect_health, patch(
+            "api.endpoints.environment._calculate_environment_health_score"
+        ) as mock_score, patch(
+            "api.endpoints.environment._generate_environment_recommendations"
+        ) as mock_recommendations, patch(
+            "api.endpoints.environment._detect_environment_warnings"
+        ) as mock_warnings:
+            mock_collect_health.return_value = ExecutionEnvironmentSnapshot(
+                **mock_snapshot.model_dump()
+            )
             mock_score.return_value = 0.85
             mock_recommendations.return_value = []
             mock_warnings.return_value = []
@@ -614,14 +700,18 @@ class TestEnvironmentIntegration:
     def test_error_recovery_workflow(self):
         """統合テスト: エラー発生時の回復処理"""
         # 環境情報取得でエラーが発生した場合の処理確認
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect:
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect:
             mock_collect.side_effect = Exception("Temporary collection failure")
 
             response = client.get("/api/v1/v1/environment/current")
             assert response.status_code == 500
 
         # 回復後の正常動作確認
-        with patch('api.endpoints.environment.collect_current_environment') as mock_collect:
+        with patch(
+            "api.endpoints.environment.collect_current_environment"
+        ) as mock_collect:
             mock_snapshot = ExecutionEnvironmentSnapshot(
                 snapshot_id="recovery_test_001",
                 captured_at=datetime.now(),
@@ -630,7 +720,7 @@ class TestEnvironmentIntegration:
                     python_implementation="CPython",
                     python_executable="/usr/bin/python3",
                     key_packages=[],
-                    total_packages_count=100
+                    total_packages_count=100,
                 ),
                 system_env=SystemEnvironmentInfo(
                     os_name="Darwin",
@@ -638,10 +728,10 @@ class TestEnvironmentIntegration:
                     platform="darwin",
                     architecture="x86_64",
                     cpu_count=8,
-                    memory_total_gb=16.0
+                    memory_total_gb=16.0,
                 ),
                 jupyter_env=JupyterEnvironmentInfo(),
-                collection_duration_ms=800.0
+                collection_duration_ms=800.0,
             )
             mock_collect.return_value = mock_snapshot
 

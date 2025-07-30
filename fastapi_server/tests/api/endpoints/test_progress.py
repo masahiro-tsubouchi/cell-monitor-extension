@@ -18,7 +18,7 @@ def mock_redis():
 def test_receive_progress_new_user(client: TestClient, db_session: Session, mock_redis):
     # FastAPI依存性オーバーライドでRedisクライアントをモック
     client.app.dependency_overrides[get_redis_client] = lambda: mock_redis
-    
+
     user_id = "api_test_user_01"
 
     payload = {
@@ -42,17 +42,20 @@ def test_receive_progress_new_user(client: TestClient, db_session: Session, mock
     assert call_args[0][0] == "progress_events"  # PROGRESS_CHANNEL
     # イベントデータがJSONで送信されていることを確認
     import json
+
     published_data = json.loads(call_args[0][1])
     assert published_data["userId"] == user_id
-    
+
     # クリーンアップ: 依存性オーバーライドをリセット
     client.app.dependency_overrides.clear()
 
 
-def test_receive_progress_existing_user(client: TestClient, db_session: Session, mock_redis):
+def test_receive_progress_existing_user(
+    client: TestClient, db_session: Session, mock_redis
+):
     # FastAPI依存性オーバーライドでRedisクライアントをモック
     client.app.dependency_overrides[get_redis_client] = lambda: mock_redis
-    
+
     user_id = "api_test_user_02"
 
     payload = {
@@ -75,8 +78,9 @@ def test_receive_progress_existing_user(client: TestClient, db_session: Session,
     assert call_args[0][0] == "progress_events"  # PROGRESS_CHANNEL
     # イベントデータがJSONで送信されていることを確認
     import json
+
     published_data = json.loads(call_args[0][1])
     assert published_data["userId"] == user_id
-    
+
     # クリーンアップ: 依存性オーバーライドをリセット
     client.app.dependency_overrides.clear()

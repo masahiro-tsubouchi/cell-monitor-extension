@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
 
+    # JWT Authentication
+    SECRET_KEY: str = "your-secret-key-here-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
     # Pydantic v2 では Config クラスの代わりに model_config を使用
     model_config = SettingsConfigDict(case_sensitive=True)
 

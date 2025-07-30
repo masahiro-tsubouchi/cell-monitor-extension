@@ -1,4 +1,19 @@
 services:
+  instructor-dashboard:
+    build:
+      context: ./instructor-dashboard
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8000/api/v1
+      - REACT_APP_WS_URL=ws://localhost:8000
+    depends_on:
+      - fastapi
+    volumes:
+      - ./instructor-dashboard:/app
+      - /app/node_modules
+
   jupyterlab:
     build:
       context: ./cell-monitor-extension
@@ -66,18 +81,18 @@ services:
     volumes:
       - redis_data:/data
 
-  # --- 配布用パッケージビルド専用サービス ---
-  extension-builder:
-    build:
-      context: ./cell-monitor-extension
-      dockerfile: Dockerfile.build
-    volumes:
-      # ビルド成果物(.whl)をホストに反映させるためにマウント
-      - ./cell-monitor-extension:/app
-    environment:
-      # 生成されるファイルの所有者をホストユーザーに合わせる
-      - HOST_UID=${HOST_UID:-1000}
-      - HOST_GID=${HOST_GID:-1000}
+  # # --- 配布用パッケージビルド専用サービス ---
+  # extension-builder:
+  #   build:
+  #     context: ./cell-monitor-extension
+  #     dockerfile: Dockerfile.build
+  #   volumes:
+  #     # ビルド成果物(.whl)をホストに反映させるためにマウント
+  #     - ./cell-monitor-extension:/app
+  #   environment:
+  #     # 生成されるファイルの所有者をホストユーザーに合わせる
+  #     - HOST_UID=${HOST_UID:-1000}
+  #     - HOST_GID=${HOST_GID:-1000}
 
 volumes:
   postgres_data:

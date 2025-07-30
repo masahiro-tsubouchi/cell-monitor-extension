@@ -57,7 +57,9 @@ def update_class_assignment(
     return db_assignment
 
 
-def delete_class_assignment(db: Session, assignment_id: int) -> Optional[ClassAssignment]:
+def delete_class_assignment(
+    db: Session, assignment_id: int
+) -> Optional[ClassAssignment]:
     """
     クラス課題を削除する
     """

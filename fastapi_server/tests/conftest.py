@@ -27,7 +27,7 @@ def event_loop_policy():
 
 
 # テスト用のDBエンジンを作成
-# 本番とは別のテスト用DBを使うのが理想だが、ここでは同じDBを使う
+# Docker環境のPostgreSQLを使用
 # トランザクションでテストの独立性を担保する
 engine = create_engine(settings.DATABASE_URL)
 

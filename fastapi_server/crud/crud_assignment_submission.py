@@ -24,7 +24,9 @@ def create_assignment_submission(
     return db_submission
 
 
-def get_assignment_submission(db: Session, submission_id: int) -> Optional[AssignmentSubmission]:
+def get_assignment_submission(
+    db: Session, submission_id: int
+) -> Optional[AssignmentSubmission]:
     """
     IDで課題提出を取得する
     """

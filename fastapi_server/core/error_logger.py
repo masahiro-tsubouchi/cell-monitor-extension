@@ -38,7 +38,7 @@ async def log_error(
 ):
     """
     エラーをRedisのエラーログチャネルに記録する
-    
+
     エラー詳細記録強化:
     - スタックトレース全体の保存
     - 実行環境情報の記録
@@ -103,19 +103,19 @@ async def log_error(
 def _collect_runtime_info() -> Dict[str, Any]:
     """
     実行環境情報を収集する
-    
+
     Returns:
         実行環境の詳細情報を含む辞書
     """
     import platform
     import sys
     import os
-    
+
     try:
         import psutil
     except ImportError:
         psutil = None
-    
+
     try:
         return {
             # Python環境情報
@@ -123,26 +123,30 @@ def _collect_runtime_info() -> Dict[str, Any]:
             "python_executable": sys.executable,
             "platform": platform.platform(),
             "architecture": platform.architecture(),
-            
             # システムリソース情報
             "memory_usage": {
-                "available_mb": round(psutil.virtual_memory().available / 1024 / 1024, 2) if psutil else "N/A",
+                "available_mb": (
+                    round(psutil.virtual_memory().available / 1024 / 1024, 2)
+                    if psutil
+                    else "N/A"
+                ),
                 "percent_used": psutil.virtual_memory().percent if psutil else "N/A",
             },
             "cpu_usage_percent": psutil.cpu_percent(interval=0.1) if psutil else "N/A",
-            "disk_usage_percent": psutil.disk_usage('/').percent if psutil else "N/A",
-            
+            "disk_usage_percent": psutil.disk_usage("/").percent if psutil else "N/A",
             # プロセス情報
             "process_id": os.getpid(),
-            "process_memory_mb": round(psutil.Process().memory_info().rss / 1024 / 1024, 2) if psutil else "N/A",
-            
+            "process_memory_mb": (
+                round(psutil.Process().memory_info().rss / 1024 / 1024, 2)
+                if psutil
+                else "N/A"
+            ),
             # 環境変数（重要なもののみ）
             "environment": {
                 "ENVIRONMENT": os.getenv("ENVIRONMENT", "unknown"),
                 "DEBUG": os.getenv("DEBUG", "false"),
                 "LOG_LEVEL": os.getenv("LOG_LEVEL", "INFO"),
             },
-            
             # タイムスタンプ
             "collected_at": datetime.utcnow().isoformat() + "Z",
         }
@@ -155,15 +159,15 @@ def _collect_runtime_info() -> Dict[str, Any]:
 def _extract_exception_details(exception: Exception) -> Dict[str, Any]:
     """
     例外オブジェクトから詳細情報を抽出する
-    
+
     Args:
         exception: 例外オブジェクト
-        
+
     Returns:
         例外の詳細情報を含む辞書
     """
     import inspect
-    
+
     try:
         # 基本的な例外情報
         exception_details = {
@@ -171,89 +175,103 @@ def _extract_exception_details(exception: Exception) -> Dict[str, Any]:
             "exception_module": exception.__class__.__module__,
             "exception_message": str(exception),
         }
-        
+
         # スタックトレース全体を文字列として保存
         if exception.__traceback__:
-            exception_details["stack_trace_full"] = traceback.format_exception(
-                type(exception), exception, exception.__traceback__
+            exception_details["stack_trace_full"] = "".join(
+                traceback.format_exception(
+                    type(exception), exception, exception.__traceback__
+                )
             )
-            
+
             # スタックトレースの詳細分析
             tb_details = []
             tb = exception.__traceback__
-            
+
             while tb is not None:
                 frame = tb.tb_frame
                 tb_info = {
                     "filename": frame.f_code.co_filename,
                     "function_name": frame.f_code.co_name,
                     "line_number": tb.tb_lineno,
-                    "code_context": _get_code_context(frame.f_code.co_filename, tb.tb_lineno),
+                    "code_context": _get_code_context(
+                        frame.f_code.co_filename, tb.tb_lineno
+                    ),
                 }
-                
+
                 # ローカル変数の状態（機密情報を除く）
                 local_vars = {}
                 for var_name, var_value in frame.f_locals.items():
-                    if not var_name.startswith('_') and len(str(var_value)) < 200:
+                    if not var_name.startswith("_") and len(str(var_value)) < 200:
                         try:
                             # JSONシリアライズ可能な値のみ保存
                             json.dumps(var_value, default=str)
                             local_vars[var_name] = var_value
                         except (TypeError, ValueError):
-                            local_vars[var_name] = f"<{type(var_value).__name__}: {str(var_value)[:100]}>"
-                
+                            local_vars[var_name] = (
+                                f"<{type(var_value).__name__}: {str(var_value)[:100]}>"
+                            )
+
                 tb_info["local_variables"] = local_vars
                 tb_details.append(tb_info)
                 tb = tb.tb_next
-            
+
             exception_details["stack_trace_details"] = tb_details
-        
+
         # 例外の原因チェーン
-        if hasattr(exception, '__cause__') and exception.__cause__:
-            exception_details["caused_by"] = _extract_exception_details(exception.__cause__)
-        
+        if hasattr(exception, "__cause__") and exception.__cause__:
+            if isinstance(exception.__cause__, Exception):
+                exception_details["caused_by"] = _extract_exception_details(
+                    exception.__cause__
+                )
+
         # 例外のコンテキスト
-        if hasattr(exception, '__context__') and exception.__context__:
-            exception_details["context"] = _extract_exception_details(exception.__context__)
-        
+        if hasattr(exception, "__context__") and exception.__context__:
+            if isinstance(exception.__context__, Exception):
+                exception_details["context"] = _extract_exception_details(
+                    exception.__context__
+                )
+
         return exception_details
-        
+
     except Exception as e:
         # 例外詳細抽出に失敗しても基本情報は返す
         logger.warning(f"例外詳細の抽出に失敗: {e}")
         return {
             "exception_type": exception.__class__.__name__,
             "exception_message": str(exception),
-            "extraction_error": str(e)
+            "extraction_error": str(e),
         }
 
 
-def _get_code_context(filename: str, line_number: int, context_lines: int = 3) -> Optional[List[str]]:
+def _get_code_context(
+    filename: str, line_number: int, context_lines: int = 3
+) -> Optional[List[str]]:
     """
     指定されたファイルの指定行周辺のコードを取得する
-    
+
     Args:
         filename: ファイルパス
         line_number: 行番号
         context_lines: 前後の行数
-        
+
     Returns:
         コードのコンテキスト行のリスト
     """
     try:
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(filename, "r", encoding="utf-8") as f:
             lines = f.readlines()
-        
+
         start_line = max(0, line_number - context_lines - 1)
         end_line = min(len(lines), line_number + context_lines)
-        
+
         context = []
         for i in range(start_line, end_line):
             prefix = ">>> " if i == line_number - 1 else "    "
             context.append(f"{prefix}{i + 1:4d}: {lines[i].rstrip()}")
-        
+
         return context
-        
+
     except Exception:
         return None
 

@@ -199,6 +199,112 @@ fastapi_server/
 
 **テスト状況**: 11個のテストケース全て成功 ✅ (キューイング4個、ステータス2個、同期3個、統合2個)
 
+### 講師管理機能API
+
+#### Authentication API (`/api/v1/auth`)
+**概要**: 講師認証・セッション管理機能 - JWTトークンベース認証システム
+
+- **POST `/api/v1/auth/login`**: 講師ログイン
+  - リクエスト: `InstructorLogin` (email, password)
+  - レスポンス: `LoginResponse` (instructor, token)
+  - 機能: bcryptパスワード検証、JWTトークン発行、ステータス更新
+  - エラー: 401 (認証失敗), 403 (非アクティブ)
+
+- **POST `/api/v1/auth/logout`**: ログアウト
+  - 認証: Bearer Token必須
+  - レスポンス: `{"message": "Successfully logged out"}`
+  - 機能: ステータス履歴更新、セッション終了
+
+- **GET `/api/v1/auth/me`**: 現在の講師情報取得
+  - 認証: Bearer Token必須
+  - レスポンス: `InstructorResponse`
+  - 機能: JWTトークンから講師情報取得
+
+- **PUT `/api/v1/auth/password`**: パスワード変更
+  - 認証: Bearer Token必須
+  - リクエスト: `InstructorPasswordUpdate` (current_password, new_password)
+  - レスポンス: `{"message": "Password updated successfully"}`
+  - 機能: 現在パスワード検証、bcryptハッシュ化更新
+
+**テスト状況**: 14個のテストケース全て成功 ✅ (ログイン5個、現在ユーザー3個、パスワード変更3個、ログアウト2個、統合1個)
+
+#### Instructor Management API (`/api/v1/instructors`)
+**概要**: 講師アカウント管理機能 - 完全CRUD操作、ページネーション、フィルター機能
+
+- **GET `/api/v1/instructors`**: 講師一覧取得
+  - 認証: Bearer Token必須
+  - クエリパラメータ: skip, limit, is_active (フィルター)
+  - レスポンス: `List[InstructorResponse]`
+  - 機能: ページネーション、アクティブ状態フィルター
+
+- **POST `/api/v1/instructors`**: 新規講師作成
+  - 認証: Bearer Token必須
+  - リクエスト: `InstructorCreate` (email, name, password, role)
+  - レスポンス: `InstructorResponse`
+  - 機能: メール重複チェック、パスワードハッシュ化、デフォルト値設定
+  - エラー: 400 (メール重複), 422 (バリデーションエラー)
+
+- **GET `/api/v1/instructors/{instructor_id}`**: 講師詳細取得
+  - 認証: Bearer Token必須
+  - レスポンス: `InstructorResponse`
+  - エラー: 404 (存在しない)
+
+- **PUT `/api/v1/instructors/{instructor_id}`**: 講師情報更新
+  - 認証: Bearer Token必須
+  - リクエスト: `InstructorUpdate` (name, role, is_active) - 部分更新対応
+  - レスポンス: `InstructorResponse`
+  - エラー: 404 (存在しない)
+
+- **DELETE `/api/v1/instructors/{instructor_id}`**: 講師削除
+  - 認証: Bearer Token必須
+  - レスポンス: `InstructorResponse`
+  - 機能: 論理削除 (is_active=False)、自己削除防止
+  - エラー: 404 (存在しない), 400 (自己削除試行)
+
+**テスト状況**: 14個のテストケース全て成功 ✅ (一覧4個、作成3個、取得2個、更新2個、削除2個、統合1個)
+
+#### Instructor Status Management API (`/api/v1/instructor_status`)
+**概要**: 講師ステータス管理機能 - リアルタイム状態管理、履歴追跡、一括更新
+
+- **GET `/api/v1/instructor_status/{instructor_id}`**: 現在ステータス取得
+  - 認証: Bearer Token必須
+  - レスポンス: `InstructorStatusResponse` (instructor_id, status, current_session_id, status_updated_at)
+  - エラー: 404 (存在しない講師)
+
+- **PUT `/api/v1/instructor_status/{instructor_id}`**: ステータス更新
+  - 認証: Bearer Token必須
+  - リクエスト: `InstructorStatusUpdate` (status, current_session_id)
+  - レスポンス: `InstructorStatusResponse`
+  - 機能: ステータス履歴自動記録、セッションID管理
+  - エラー: 404 (存在しない), 422 (無効ステータス)
+
+- **GET `/api/v1/instructor_status/{instructor_id}/history`**: ステータス履歴取得
+  - 認証: Bearer Token必須
+  - クエリパラメータ: skip, limit (ページネーション)
+  - レスポンス: `List[InstructorStatusHistoryResponse]`
+  - 機能: 時系列順ソート、継続時間計算
+  - エラー: 404 (存在しない講師)
+
+- **POST `/api/v1/instructor_status/bulk`**: 一括ステータス更新
+  - 認証: Bearer Token必須
+  - リクエスト: `{"updates": [InstructorStatusUpdate]}`
+  - レスポンス: `{"updated_count": int, "results": [UpdateResult]}`
+  - 機能: 部分成功対応、エラー詳細返却
+  - ステータスコード: 200 (全成功), 207 (部分成功)
+
+**テスト状況**: 13個のテストケース全て成功 ✅ (ステータス取得3個、ステータス更新4個、履歴取得3個、一括更新2個、統合1個)
+
+#### Instructor WebSocket API (`/instructor/ws`)
+**概要**: 講師専用リアルタイム通信 - JWT認証付きWebSocket接続
+
+- **WebSocket `/instructor/ws`**: 講師認証付き接続
+  - 認証: クエリパラメータ `token` (JWT)
+  - 機能: ステータス変更通知、学生-講師間メッセージング
+  - メッセージ形式: JSON `{"type": "status_update", "data": {...}}`
+  - エラー: 403 (認証失敗), 接続拒否
+
+**テスト状況**: 5個のテストケース全て成功 ✅ (認証3個、ステータス通知1個、双方向通信1個)
+
 #### Environment API (`/api/v1/v1/environment`)
 **概要**: 実行環境情報の収集・分析・管理機能 - Python環境、システム情報、パッケージ依存関係の包括的監視
 
@@ -310,8 +416,8 @@ fastapi_server/
 ## 🏆 AI駆動TDDテスト成果サマリー
 
 ### 完全成功の達成
-**総テストケース数**: **63個全て成功** ✅  
-**成功率**: **100%**  
+**総テストケース数**: **63個全て成功** ✅
+**成功率**: **100%**
 **AI駆動TDD適用**: 全APIで体系的なテスト駆動開発を実施
 
 ### テストカバレッジ詳細

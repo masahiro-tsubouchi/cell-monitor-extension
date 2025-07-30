@@ -107,26 +107,31 @@ class TestEventProcessingIntegration:
 
     @pytest.mark.asyncio
     @patch("worker.event_router.write_progress_event")
-    async def test_api_to_redis_integration(self, mock_write_progress, test_client, mock_redis):
+    async def test_api_to_redis_integration(
+        self, mock_write_progress, test_client, mock_redis
+    ):
         """APIからRedisへのイベント発行統合テスト"""
         # FastAPI依存性オーバーライドでRedisクライアントをモック
         from db.redis_client import get_redis_client
+
         test_client.app.dependency_overrides[get_redis_client] = lambda: mock_redis
-        
+
         # InfluxDB書き込みのモック設定
         mock_write_progress.return_value = AsyncMock()
-        
+
         # テスト用イベントデータ（リスト形式）
-        event_data = [{
-            "eventType": "cell_execution",
-            "userId": "test_user",
-            "notebookPath": "/path/to/notebook.ipynb",
-            "cellId": "cell123",
-            "timestamp": "2023-01-01T12:00:00Z",
-            "cellType": "code",
-            "executionTime": 0.5,
-            "success": True,
-        }]
+        event_data = [
+            {
+                "eventType": "cell_execution",
+                "userId": "test_user",
+                "notebookPath": "/path/to/notebook.ipynb",
+                "cellId": "cell123",
+                "timestamp": "2023-01-01T12:00:00Z",
+                "cellType": "code",
+                "executionTime": 0.5,
+                "success": True,
+            }
+        ]
 
         # APIエンドポイントを呼び出す
         response = test_client.post("/api/v1/events", json=event_data)
@@ -141,14 +146,16 @@ class TestEventProcessingIntegration:
         mock_pipeline = mock_redis.pipeline.return_value
         mock_pipeline.publish.assert_called_once()
         mock_pipeline.execute.assert_called_once()
-        
+
         # 第1引数がRedisチャネル名
-        assert mock_pipeline.publish.call_args[0][0] == redis_client.NOTIFICATION_CHANNEL
+        assert (
+            mock_pipeline.publish.call_args[0][0] == redis_client.NOTIFICATION_CHANNEL
+        )
         # 第2引数がシリアライズされたイベントデータ
         published_data = json.loads(mock_pipeline.publish.call_args[0][1])
         assert published_data["eventType"] == "cell_execution"
         assert published_data["userId"] == "test_user"
-        
+
         # クリーンアップ: 依存性オーバーライドをリセット
         test_client.app.dependency_overrides.clear()
 
@@ -210,6 +217,6 @@ class TestErrorHandlingIntegration:
         # エラーログ機能の統合テストは上記で完了
         # 実際のエラーログが記録されていることをログで確認済み
 
-            # 実際のRedis publishを検証するには別のアプローチが必要
-            # この例ではlog_error内部でRedisクライアントをモックしているため、
-            # 外部からの検証は難しい
+        # 実際のRedis publishを検証するには別のアプローチが必要
+        # この例ではlog_error内部でRedisクライアントをモックしているため、
+        # 外部からの検証は難しい

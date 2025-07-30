@@ -1,14 +1,18 @@
 from sqlalchemy import (
     Column,
-    String,
     Integer,
-    ForeignKey,
+    String,
     DateTime,
-    Text,
     Boolean,
+    Text,
+    ForeignKey,
     Float,
+    Enum,
+    Index,
 )
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+import enum
 from sqlalchemy.sql import func
 import uuid
 
@@ -134,6 +138,7 @@ class Class(Base):
     class_code = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
+    instructor_id = Column(Integer, ForeignKey("instructors.id"), nullable=True)
     start_date = Column(DateTime(timezone=True), nullable=True)
     end_date = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True)
@@ -141,6 +146,7 @@ class Class(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # リレーションシップ
+    instructor = relationship("Instructor", back_populates="classes")
     students = relationship("StudentClass", back_populates="class_")
     assignments = relationship("ClassAssignment", back_populates="class_")
 
@@ -214,3 +220,59 @@ class NotebookAccess(Base):
     # リレーションシップ
     student = relationship("Student", back_populates="notebooks")
     notebook = relationship("Notebook", back_populates="student_accesses")
+
+
+class InstructorStatus(enum.Enum):
+    """講師のステータス"""
+
+    AVAILABLE = "available"  # 利用可能
+    IN_SESSION = "in_session"  # セッション中
+    BREAK = "break"  # 休憩中
+    OFFLINE = "offline"  # オフライン
+
+
+class Instructor(Base):
+    """講師テーブル"""
+
+    __tablename__ = "instructors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=False)
+    role = Column(String(50), default="instructor")
+    is_active = Column(Boolean, default=True)
+
+    status = Column(
+        Enum(InstructorStatus), default=InstructorStatus.OFFLINE, nullable=False
+    )
+    current_session_id = Column(Integer, ForeignKey("sessions.id"), nullable=True)
+    status_updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # リレーションシップ
+    classes = relationship("Class", back_populates="instructor")
+    status_history = relationship(
+        "InstructorStatusHistory", back_populates="instructor"
+    )
+    current_session = relationship("Session", foreign_keys=[current_session_id])
+
+
+class InstructorStatusHistory(Base):
+    """講師ステータス履歴テーブル"""
+
+    __tablename__ = "instructor_status_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    instructor_id = Column(Integer, ForeignKey("instructors.id"), nullable=False)
+    status = Column(Enum(InstructorStatus), nullable=False)
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+    duration_minutes = Column(Integer, nullable=True)  # 自動計算される継続時間
+
+    # リレーションシップ
+    instructor = relationship("Instructor", back_populates="status_history")

@@ -56,12 +56,17 @@ def create_cell(db: Session, notebook_id: int, event: EventData) -> models.Cell:
 
 def get_or_create_cell(db: Session, notebook_id: int, event: EventData) -> models.Cell:
     """指定された情報でセルを取得、存在しない場合は作成する"""
+    if not event.cellId:
+        raise ValueError("cellId is required")
     db_cell = get_cell_by_cell_id(db, notebook_id=notebook_id, cell_id=event.cellId)
     if not db_cell:
         db_cell = create_cell(db, notebook_id=notebook_id, event=event)
     # セルの内容が更新されている可能性を考慮
     elif event.code and db_cell.content != event.code:
-        db_cell.content = event.code
+        if isinstance(db_cell.content, str):
+            db_cell.content = event.code
+        else:
+            db_cell.content = event.code
         db.commit()
         db.refresh(db_cell)
 

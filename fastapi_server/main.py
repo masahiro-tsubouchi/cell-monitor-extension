@@ -4,10 +4,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import socketio
 
 from api.api import api_router
 from core.config import settings
 from core.connection_manager import manager
+from core.socketio_server import instructor_socketio_manager
 from db.redis_client import get_redis_client, NOTIFICATION_CHANNEL
 from db.base import Base
 from db.session import engine
@@ -29,7 +31,11 @@ async def redis_subscriber():
             )
             if message and message.get("type") == "message":
                 print(f"Received notification: {message['data']}")
-                await manager.broadcast(message["data"].decode("utf-8"))
+                # message['data'] が既に文字列の場合とバイト列の場合を処理
+                data = message["data"]
+                if isinstance(data, bytes):
+                    data = data.decode("utf-8")
+                await manager.broadcast(data)
             await asyncio.sleep(0.01)
     except asyncio.CancelledError:
         print("Redis subscriber task cancelled.")
@@ -93,6 +99,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # 静的ファイルディレクトリのマウント
 import os
+
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if not os.path.exists(static_dir):
     os.makedirs(static_dir)
@@ -104,3 +111,8 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 async def read_root():
     """APIルートエンドポイント"""
     return {"message": f"Welcome to {settings.PROJECT_NAME}"}
+
+
+# Socket.IOサーバーをFastAPIアプリケーションに統合
+# 正しい統合方法: Socket.IOアプリをメインアプリとしてエクスポート
+app = socketio.ASGIApp(instructor_socketio_manager.sio, app)

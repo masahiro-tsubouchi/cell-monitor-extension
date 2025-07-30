@@ -23,7 +23,7 @@ async def receive_progress(
     await redis_client.publish(PROGRESS_CHANNEL, event.model_dump_json())
 
     return {
-        "status": "ok", 
+        "status": "ok",
         "message": "Event published successfully",
-        "processed_user_id": event.userId
+        "processed_user_id": event.userId,
     }

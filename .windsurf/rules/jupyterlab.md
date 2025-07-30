@@ -1,5 +1,6 @@
 ---
 trigger: always_on
+description: jupyterlab-extension
 ---
 
 # Project "Cell Monitor": AI-Driven Development Rules

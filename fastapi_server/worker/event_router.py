@@ -183,6 +183,9 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
         return
 
     # 2. 関連エンティティの取得または作成
+    if not event.userId or not event.notebookPath:
+        logger.error("userId または notebookPath が None です")
+        return
     student, _ = crud_student.get_or_create_student(db, user_id=event.userId)
     notebook, _ = crud_notebook.get_or_create_notebook(db, path=event.notebookPath)
     cell, _ = crud_notebook.get_or_create_cell(db, notebook_id=notebook.id, event=event)
@@ -256,6 +259,183 @@ async def handle_notebook_save(event_data: Dict[str, Any], db: Session):
         raise
 
 
+# 講師セッション開始イベントのハンドラー
+async def handle_student_session_start(event_data: Dict[str, Any], db: Session) -> bool:
+    """
+    学生セッション開始時の講師ステータス自動更新
+
+    Args:
+        event_data: イベントデータを含む辞書
+        db: SQLAlchemy DBセッション
+
+    Returns:
+        bool: 処理が成功したかどうか
+    """
+    try:
+        instructor_id = event_data.get("instructor_id")
+        student_id = event_data.get("student_id")
+
+        if not instructor_id:
+            logger.warning("instructor_idが指定されていません")
+            return False
+
+        # 講師ステータスをIN_SESSIONに更新
+        from crud.crud_instructor import get_instructor, update_instructor_status
+        from schemas.instructor import InstructorStatusUpdate
+        from db.models import InstructorStatus
+
+        instructor = get_instructor(db, instructor_id)
+        if not instructor:
+            logger.error(f"講師が見つかりません: {instructor_id}")
+            return False
+
+        # セッション情報は別途管理し、current_session_idはNullに設定
+        # （外部キー制約を回避するため）
+        status_update = InstructorStatusUpdate(
+            status=InstructorStatus.IN_SESSION, current_session_id=None
+        )
+
+        updated_instructor = update_instructor_status(db, instructor_id, status_update)
+        if updated_instructor:
+            logger.info(f"講師ステータスを更新しました: {instructor_id} -> IN_SESSION")
+
+            # WebSocket通知を送信
+            session_info = f"session_{student_id}_{instructor_id}"
+            await _notify_instructor_status_change(
+                instructor_id, "in_session", session_info
+            )
+
+            return True
+        else:
+            logger.error(f"講師ステータス更新に失敗しました: {instructor_id}")
+            return False
+
+    except Exception as e:
+        logger.error(f"学生セッション開始処理でエラーが発生しました: {e}")
+        return False
+
+
+# 講師割り当てイベントのハンドラー
+async def handle_instructor_assignment(event_data: Dict[str, Any], db: Session) -> bool:
+    """
+    講師-学生マッチング機能
+
+    Args:
+        event_data: イベントデータを含む辞書
+        db: SQLAlchemy DBセッション
+
+    Returns:
+        bool: 処理が成功したかどうか
+    """
+    try:
+        student_id = event_data.get("student_id")
+        class_id = event_data.get("class_id")
+        subject = event_data.get("subject", "")
+        priority = event_data.get("priority", "normal")
+
+        # 利用可能な講師を検索
+        from crud.crud_instructor import get_instructors
+        from db.models import InstructorStatus
+
+        available_instructors = get_instructors(db, skip=0, limit=10, is_active=True)
+
+        # AVAILABLE状態の講師を優先的に選択
+        selected_instructor = None
+        for instructor in available_instructors:
+            if instructor.status == InstructorStatus.AVAILABLE:
+                selected_instructor = instructor
+                break
+
+        if not selected_instructor:
+            logger.warning(f"利用可能な講師が見つかりません: student_id={student_id}")
+            return False
+
+        # 講師をIN_SESSIONに更新
+        from crud.crud_instructor import update_instructor_status
+        from schemas.instructor import InstructorStatusUpdate
+
+        # セッション情報は別途管理し、current_session_idはNullに設定
+        # （外部キー制約を回避するため）
+        status_update = InstructorStatusUpdate(
+            status=InstructorStatus.IN_SESSION, current_session_id=None
+        )
+
+        updated_instructor = update_instructor_status(
+            db, selected_instructor.id, status_update
+        )
+        if updated_instructor:
+            logger.info(
+                f"講師を割り当てました: {selected_instructor.id} -> student: {student_id}"
+            )
+
+            # WebSocket通知を送信
+            await _notify_instructor_assignment(
+                selected_instructor.id, student_id, class_id
+            )
+
+            return True
+        else:
+            logger.error(f"講師割り当てに失敗しました: {selected_instructor.id}")
+            return False
+
+    except Exception as e:
+        logger.error(f"講師割り当て処理でエラーが発生しました: {e}")
+        return False
+
+
+# WebSocket通知ヘルパー関数
+async def _notify_instructor_status_change(
+    instructor_id: int, status: str, session_info: str
+):
+    """
+    講師ステータス変更のWebSocket通知
+    """
+    try:
+        from api.endpoints.instructor_websocket import instructor_manager
+        from datetime import datetime, timezone
+
+        message = {
+            "type": "status_updated",
+            "instructor_id": instructor_id,
+            "status": status,
+            "session_info": session_info,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        await instructor_manager.send_to_instructor(instructor_id, message)
+        logger.info(f"講師ステータス変更通知を送信しました: {instructor_id}")
+
+    except Exception as e:
+        logger.warning(f"WebSocket通知の送信に失敗しました: {e}")
+
+
+async def _notify_instructor_assignment(
+    instructor_id: int, student_id: str, class_id: str
+):
+    """
+    講師割り当てのWebSocket通知
+    """
+    try:
+        from api.endpoints.instructor_websocket import instructor_manager
+        from datetime import datetime, timezone
+
+        message = {
+            "type": "instructor_assigned",
+            "instructor_id": instructor_id,
+            "student_id": student_id,
+            "class_id": class_id,
+            "assigned_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        await instructor_manager.send_to_instructor(instructor_id, message)
+        logger.info(
+            f"講師割り当て通知を送信しました: {instructor_id} -> student: {student_id}"
+        )
+
+    except Exception as e:
+        logger.warning(f"WebSocket通知の送信に失敗しました: {e}")
+
+
 # ルーター・インスタンスの作成（シングルトン）
 event_router = EventRouter()
 
@@ -264,4 +444,10 @@ event_router.register_handler(
     "cell_execution", handle_cell_execution
 )  # フロントエンドのイベント名に合わせる
 event_router.register_handler("notebook_save", handle_notebook_save)
-# 他のイベントタイプに対応するハンドラーを追加可能
+
+# 講師関連ハンドラーの登録
+event_router.register_handler("student_session_start", handle_student_session_start)
+event_router.register_handler("instructor_assignment", handle_instructor_assignment)
+
+# ログ出力
+logger.info("イベントルーターが初期化されました")
