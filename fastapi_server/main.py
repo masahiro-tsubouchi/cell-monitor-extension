@@ -114,5 +114,9 @@ async def read_root():
 
 
 # Socket.IOサーバーをFastAPIアプリケーションに統合
-# 正しい統合方法: Socket.IOアプリをメインアプリとしてエクスポート
-app = socketio.ASGIApp(instructor_socketio_manager.sio, app)
+# python-socketio 5.11.0対応の正しい統合方法
+# python-socketio 5.11.0 と FastAPI 0.109.x の互換性問題を解決するための統合方法
+sio_app = socketio.ASGIApp(
+    socketio_server=instructor_socketio_manager.sio, socketio_path="socket.io"
+)
+app.mount("/", app=sio_app)

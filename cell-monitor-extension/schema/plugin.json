@@ -1,51 +1,57 @@
 {
   "jupyter.lab.setting-icon": "ui-components:settings",
   "jupyter.lab.setting-icon-label": "Cell Monitor",
-  "title": "Cell Monitor",
-  "description": "Settings for the Cell Monitor extension",
+  "title": "セルモニター",
+  "description": "セルモニター拡張機能の設定",
   "type": "object",
   "properties": {
     "serverUrl": {
       "type": "string",
-      "title": "Server URL",
-      "description": "URL of the FastAPI server to send cell execution data",
+      "title": "サーバーURL",
+      "description": "セル実行データを送信するFastAPIサーバーのURL",
       "default": "/cell-monitor"
     },
     "userId": {
       "type": "string",
-      "title": "User ID",
-      "description": "Unique identifier for the user",
+      "title": "ユーザーID",
+      "description": "ユーザーの一意識別子",
       "default": ""
     },
     "userName": {
       "type": "string",
-      "title": "User Name",
-      "description": "Display name for the user",
-      "default": "Anonymous"
+      "title": "ユーザー名",
+      "description": "ユーザーの表示名",
+      "default": "匿名"
     },
     "batchSize": {
       "type": "integer",
-      "title": "Batch Size",
-      "description": "Number of executions to collect before sending to server",
+      "title": "バッチサイズ",
+      "description": "サーバーに送信する前に収集する実行回数",
       "default": 1,
       "minimum": 1,
       "maximum": 100
     },
     "retryAttempts": {
       "type": "integer",
-      "title": "Retry Attempts",
-      "description": "Number of retry attempts when sending data fails",
+      "title": "再試行回数",
+      "description": "データ送信失敗時の再試行回数",
       "default": 3,
       "minimum": 0,
       "maximum": 10
     },
     "maxNotifications": {
       "type": "integer",
-      "title": "Max Notifications",
-      "description": "Maximum number of notifications to show",
+      "title": "最大通知数",
+      "description": "表示する通知の最大数",
       "default": 3,
       "minimum": 0,
       "maximum": 10
+    },
+    "showNotifications": {
+      "type": "boolean",
+      "title": "通知表示",
+      "description": "データがサーバーに送信された時に通知を表示する",
+      "default": true
     }
   }
 }
