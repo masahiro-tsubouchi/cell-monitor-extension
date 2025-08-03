@@ -116,7 +116,7 @@ class TestInstructorSocketIOManager:
                 # verify_token が None を返すため認証失敗
                 token = auth.get("token")
                 payload = mock_verify_token(token)
-                
+
                 if not payload:
                     await socketio_manager.sio.disconnect(sid)
                     result = False
@@ -144,7 +144,7 @@ class TestInstructorSocketIOManager:
 
         # トークンなしによる認証失敗をシミュレート
         token = auth.get("token") if auth else None
-        
+
         if not token:
             await socketio_manager.sio.disconnect(sid)
             result = False
@@ -201,7 +201,7 @@ class TestInstructorSocketIOManager:
         # instructor_status_update処理をシミュレート
         if sid in socketio_manager.instructor_sessions:
             session_info = socketio_manager.instructor_sessions[sid]
-            
+
             # ブロードキャストデータを構築
             broadcast_data = {
                 "instructor_id": session_info["instructor_id"],
@@ -210,9 +210,11 @@ class TestInstructorSocketIOManager:
                 "location": status_data.get("location"),
                 "timestamp": asyncio.get_event_loop().time(),
             }
-            
+
             # ブロードキャストをシミュレート
-            await mock_sio.emit("instructor_status_update", broadcast_data, skip_sid=sid)
+            await mock_sio.emit(
+                "instructor_status_update", broadcast_data, skip_sid=sid
+            )
 
         # ブロードキャストが呼び出されたことを検証
         mock_sio.emit.assert_called_once()
@@ -256,7 +258,7 @@ class TestInstructorSocketIOManager:
                 "help_type": help_data.get("help_type", "general"),
                 "timestamp": asyncio.get_event_loop().time(),
             }
-            
+
             # ブロードキャストをシミュレート
             await mock_sio.emit("student_help_request", broadcast_data)
 

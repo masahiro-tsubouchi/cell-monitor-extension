@@ -37,7 +37,7 @@ describe('Cell Monitor Type Definitions', () => {
       const existingEventTypes = [
         'cell_executed',
         'notebook_opened',
-        'notebook_saved', 
+        'notebook_saved',
         'notebook_closed'
       ];
 
@@ -53,7 +53,7 @@ describe('Cell Monitor Type Definitions', () => {
       const expectedSettingsProperties = [
         'serverUrl',
         'userId',
-        'userName', 
+        'userName',
         'batchSize',
         'retryAttempts',
         'maxNotifications',
@@ -67,7 +67,7 @@ describe('Cell Monitor Type Definitions', () => {
     it('should maintain existing settings properties', () => {
       const existingProperties = [
         'serverUrl',
-        'userId', 
+        'userId',
         'userName',
         'batchSize',
         'retryAttempts',
@@ -76,7 +76,7 @@ describe('Cell Monitor Type Definitions', () => {
 
       existingProperties.forEach(prop => {
         expect([
-          'serverUrl', 'userId', 'userName', 'batchSize', 
+          'serverUrl', 'userId', 'userName', 'batchSize',
           'retryAttempts', 'maxNotifications', 'showNotifications'
         ]).toContain(prop);
       });
@@ -89,7 +89,7 @@ describe('Cell Monitor Type Definitions', () => {
       const validEventTypeValues = [
         'cell_executed',
         'notebook_opened',
-        'notebook_saved', 
+        'notebook_saved',
         'notebook_closed',
         'help'
       ];
@@ -101,7 +101,7 @@ describe('Cell Monitor Type Definitions', () => {
       // 既存のインターフェース構造が維持されることをテスト
       const expectedFields = [
         'eventId',
-        'eventType', 
+        'eventType',
         'eventTime',
         'userId',
         'userName',

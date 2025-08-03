@@ -46,13 +46,13 @@ describe('Cell Monitor Settings Schema', () => {
     it('should maintain all existing properties', () => {
       const expectedProperties = [
         'serverUrl',
-        'userId', 
+        'userId',
         'userName',
         'batchSize',
         'retryAttempts',
         'maxNotifications'
       ];
-      
+
       expectedProperties.forEach(prop => {
         expect(schema.properties).toHaveProperty(prop);
       });

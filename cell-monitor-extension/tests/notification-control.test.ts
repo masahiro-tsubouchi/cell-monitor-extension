@@ -53,34 +53,34 @@ describe('Cell Monitor Notification Control', () => {
       // モック関数を使用して通知APIの呼び出しをテスト
       const mockNotificationInfo = jest.fn();
       const mockNotificationSuccess = jest.fn();
-      
+
       // showNotifications=trueの場合の通知制御関数をテスト
       const shouldShowNotification = (showNotifications: boolean) => showNotifications;
-      
+
       expect(shouldShowNotification(true)).toBe(true);
-      
+
       // 実装後は実際の通知表示関数をテストする
       if (shouldShowNotification(true)) {
         mockNotificationInfo('Test notification');
       }
-      
+
       expect(mockNotificationInfo).toHaveBeenCalledWith('Test notification');
     });
 
     it('should not call notification API when showNotifications is disabled', () => {
       // モック関数を使用して通知APIが呼ばれないことをテスト
       const mockNotificationInfo = jest.fn();
-      
+
       // showNotifications=falseの場合の通知制御関数をテスト
       const shouldShowNotification = (showNotifications: boolean) => showNotifications;
-      
+
       expect(shouldShowNotification(false)).toBe(false);
-      
+
       // 実装後は実際の通知非表示ロジックをテストする
       if (shouldShowNotification(false)) {
         mockNotificationInfo('Test notification');
       }
-      
+
       expect(mockNotificationInfo).not.toHaveBeenCalled();
     });
 
@@ -89,11 +89,11 @@ describe('Cell Monitor Notification Control', () => {
       const mockSettings = {
         get: jest.fn().mockReturnValue({ composite: true })
       };
-      
+
       const getShowNotifications = (settings: any) => {
         return settings.get('showNotifications').composite as boolean;
       };
-      
+
       const result = getShowNotifications(mockSettings);
       expect(result).toBe(true);
       expect(mockSettings.get).toHaveBeenCalledWith('showNotifications');

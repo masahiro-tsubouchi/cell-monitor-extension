@@ -3,10 +3,10 @@
  * 5秒間隔でのhelpイベント送信機能をテスト
  */
 
-import { 
-  EventType, 
-  IStudentProgressData, 
-  HelpSession 
+import {
+  EventType,
+  IStudentProgressData,
+  HelpSession
 } from '../src/index';
 
 // モック関数の定義
@@ -26,14 +26,14 @@ describe('Phase 4: ヘルプ要請機能', () => {
     // 各テスト前にモックをリセット
     jest.clearAllMocks();
     jest.clearAllTimers();
-    
+
     // helpSessionの初期化
     mockHelpSession = {
       isActive: false,
       startTime: null,
       buttonElement: null
     };
-    
+
     mockSessionId = 'test-session-123';
   });
 
@@ -42,13 +42,13 @@ describe('Phase 4: ヘルプ要請機能', () => {
       // ヘルプセッション開始をシミュレート
       mockHelpSession.isActive = true;
       mockHelpSession.startTime = Date.now();
-      
+
       // startHelpRequestTimer関数を呼び出し（実装予定）
       // startHelpRequestTimer();
-      
+
       // 5秒経過をシミュレート
       jest.advanceTimersByTime(5000);
-      
+
       // helpイベントが送信されることを期待（実装後に有効化）
       // expect(mockSendProgressData).toHaveBeenCalledWith([
       //   expect.objectContaining({
@@ -57,7 +57,7 @@ describe('Phase 4: ヘルプ要請機能', () => {
       //     userName: 'Test User'
       //   })
       // ]);
-      
+
       // 現在はテスト構造のみ確認
       expect(mockHelpSession.isActive).toBe(true);
     });
@@ -66,20 +66,20 @@ describe('Phase 4: ヘルプ要請機能', () => {
       // ヘルプセッション開始
       mockHelpSession.isActive = true;
       mockHelpSession.startTime = Date.now();
-      
+
       // タイマー開始（実装予定）
       // startHelpRequestTimer();
-      
+
       // ヘルプセッション停止
       mockHelpSession.isActive = false;
       mockHelpSession.startTime = null;
-      
+
       // タイマー停止（実装予定）
       // stopHelpRequestTimer();
-      
+
       // 5秒経過してもイベントが送信されないことを期待
       jest.advanceTimersByTime(5000);
-      
+
       // 現在はテスト構造のみ確認
       expect(mockHelpSession.isActive).toBe(false);
     });
@@ -100,7 +100,7 @@ describe('Phase 4: ヘルプ要請機能', () => {
         executionTime: null,
         errorMessage: null
       };
-      
+
       // helpイベントデータ構造の検証
       expect(expectedHelpEvent.eventType).toBe('help');
       expect(expectedHelpEvent.notebookPath).toBeNull();
@@ -118,30 +118,30 @@ describe('Phase 4: ヘルプ要請機能', () => {
       // 1回目: ヘルプ開始
       mockHelpSession.isActive = true;
       mockHelpSession.startTime = Date.now();
-      
+
       // タイマー開始（実装予定）
       // startHelpRequestTimer();
-      
+
       // 3秒経過
       jest.advanceTimersByTime(3000);
-      
+
       // ヘルプ停止
       mockHelpSession.isActive = false;
       mockHelpSession.startTime = null;
-      
+
       // タイマー停止（実装予定）
       // stopHelpRequestTimer();
-      
+
       // 2回目: ヘルプ再開
       mockHelpSession.isActive = true;
       mockHelpSession.startTime = Date.now();
-      
+
       // タイマー再開（実装予定）
       // startHelpRequestTimer();
-      
+
       // 5秒経過
       jest.advanceTimersByTime(5000);
-      
+
       // 現在はテスト構造のみ確認
       expect(mockHelpSession.isActive).toBe(true);
     });
@@ -150,16 +150,16 @@ describe('Phase 4: ヘルプ要請機能', () => {
       // ヘルプセッション開始
       mockHelpSession.isActive = true;
       mockHelpSession.startTime = Date.now();
-      
+
       // タイマー開始（実装予定）
       // startHelpRequestTimer();
-      
+
       // 15秒経過（3回のイベント送信を期待）
       jest.advanceTimersByTime(15000);
-      
+
       // 3回のhelpイベント送信を期待（実装後に有効化）
       // expect(mockSendProgressData).toHaveBeenCalledTimes(3);
-      
+
       // 現在はテスト構造のみ確認
       expect(mockHelpSession.isActive).toBe(true);
     });
@@ -169,7 +169,7 @@ describe('Phase 4: ヘルプ要請機能', () => {
     it('createHelpEventData関数が正しいhelpイベントデータを生成する', () => {
       // createHelpEventData関数のテスト（実装予定）
       const mockCurrentTime = '2025-01-19T12:00:00.000Z';
-      
+
       // 期待するhelpイベントデータ
       const expectedData: IStudentProgressData = {
         eventId: 'test-uuid-123',
@@ -186,11 +186,11 @@ describe('Phase 4: ヘルプ要請機能', () => {
         executionTime: null,
         errorMessage: null
       };
-      
+
       // 関数実行結果の検証（実装後に有効化）
       // const result = createHelpEventData();
       // expect(result).toEqual(expectedData);
-      
+
       // 現在はデータ構造のみ確認
       expect(expectedData.eventType).toBe('help');
     });

@@ -195,7 +195,7 @@ function startHelpRequestTimer(): void {
   if (helpSession.timerId) {
     clearInterval(helpSession.timerId);
   }
-  
+
   helpSession.timerId = setInterval(() => {
     if (helpSession.isActive && globalSendProgressData) {
       const helpEventData = createHelpEventData();
@@ -224,7 +224,7 @@ function updateHelpButtonAppearance(button: any): void {
     console.warn('Help button or button.node is not available');
     return;
   }
-  
+
   try {
     if (helpSession.isActive) {
       // ON状態: アクティブスタイルと「ヘルプ要請中...」表示
@@ -253,17 +253,17 @@ function updateHelpButtonAppearance(button: any): void {
  */
 function toggleHelpState(button: any): void {
   console.log('toggleHelpState called, current state:', helpSession.isActive);
-  
+
   // 状態を切り替え
   helpSession.isActive = !helpSession.isActive;
-  
+
   console.log('New help state:', helpSession.isActive ? 'ACTIVE (ON)' : 'INACTIVE (OFF)');
-  
+
   if (helpSession.isActive) {
     // ON状態: タイマー開始
     console.log('Starting help request timer...');
     startHelpRequestTimer();
-    
+
     // 即座に1回目のヘルプイベントを送信
     if (globalSendProgressData) {
       const helpEventData = createHelpEventData();
@@ -275,10 +275,10 @@ function toggleHelpState(button: any): void {
     console.log('Stopping help request timer...');
     stopHelpRequestTimer();
   }
-  
+
   // ボタンの外観を更新
   updateHelpButtonAppearance(button);
-  
+
   console.log('toggleHelpState completed');
 }
 
@@ -287,7 +287,7 @@ function toggleHelpState(button: any): void {
  */
 function createHelpButton(): ToolbarButton {
   console.log('Creating help button with best practices...');
-  
+
   // 仮説8対策: JupyterLabのToolbarButtonベストプラクティスに従った実装
   const helpButton: ToolbarButton = new ToolbarButton({
     className: 'jp-help-button jp-ToolbarButton', // JupyterLab標準クラスを追加
@@ -297,10 +297,10 @@ function createHelpButton(): ToolbarButton {
     iconClass: '', // アイコンは使用しない
     enabled: true // 有効化
   });
-  
+
   console.log('ToolbarButton created with best practices:', helpButton);
   console.log('ToolbarButton node:', helpButton.node);
-  
+
   // 仮説7対策: DOM挿入タイミング問題を避けるため、後からonClickを設定
   setTimeout(() => {
     // ボタンのクリックイベントを安全に設定
@@ -308,7 +308,7 @@ function createHelpButton(): ToolbarButton {
       console.log('Help button clicked!');
       toggleHelpState(helpButton);
     };
-    
+
     // バックアップとしてDOMイベントリスナーも追加
     const buttonNode = helpButton.node;
     buttonNode.addEventListener('click', (event: Event) => {
@@ -317,13 +317,13 @@ function createHelpButton(): ToolbarButton {
       console.log('Help button DOM click event triggered!');
       toggleHelpState(helpButton);
     });
-    
+
     console.log('Help button onClick handler and DOM event listener set');
   }, 0);
-  
+
   // 仮説1-4対策: ベストプラクティスCSSスタイル設定
   const buttonNode = helpButton.node;
-  
+
   // 基本スタイル設定
   buttonNode.textContent = 'HELP'; // 新要件: 初期状態で「HELP」表示
   buttonNode.setAttribute('aria-label', 'ヘルプ要請ボタン');
@@ -331,7 +331,7 @@ function createHelpButton(): ToolbarButton {
   buttonNode.setAttribute('role', 'button');
   buttonNode.setAttribute('tabindex', '0');
   buttonNode.setAttribute('data-help-button', 'true'); // 識別用属性
-  
+
   // 仮説1-4対策: 強制的な表示スタイル（!important使用）
   const forceVisibleStyles = {
     'display': 'inline-flex !important',
@@ -362,23 +362,23 @@ function createHelpButton(): ToolbarButton {
     'align-items': 'center !important',
     'justify-content': 'center !important'
   };
-  
+
   // スタイルを順次適用
   Object.entries(forceVisibleStyles).forEach(([property, value]) => {
     buttonNode.style.setProperty(property, value.replace(' !important', ''), 'important');
   });
-  
+
   // ホバーエフェクトを追加
   buttonNode.addEventListener('mouseenter', () => {
     buttonNode.style.setProperty('background-color', '#005a9e', 'important');
   });
-  
+
   buttonNode.addEventListener('mouseleave', () => {
     buttonNode.style.setProperty('background-color', '#007acc', 'important');
   });
-  
+
   console.log('Help button styled with best practices and forced visibility');
-  
+
   return helpButton;
 }
 
@@ -436,7 +436,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const newShowNotifications = registrySettings.get('showNotifications').composite as boolean;
           const oldValue = globalSettings.showNotifications;
           globalSettings.showNotifications = newShowNotifications !== undefined ? newShowNotifications : true;
-          
+
           console.log('=== SETTINGS CHANGED ===');
           console.log('Show Notifications changed:', oldValue, '->', globalSettings.showNotifications);
           console.log('========================');
@@ -548,28 +548,28 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const startTime = performance.now();
 
         const cellId = cell.model.id;
-        
+
         // 仮説7対策: 重複処理防止機構
         const currentTime = Date.now();
         const lastTime = lastProcessedTime.get(cellId) || 0;
         const timeDiff = currentTime - lastTime;
-        
+
         console.log('=== CELL EXECUTION DEBUG ===');
         console.log('Cell ID:', cellId);
         console.log('Time since last processing:', timeDiff, 'ms');
         console.log('Already processed:', processedCells.has(cellId));
-        
+
         // 仮説9対策: 500ms以内の重複処理を防止（デバウンス）
         if (timeDiff < 500 && processedCells.has(cellId)) {
           console.log('Skipping duplicate cell execution processing');
           console.log('============================');
           return;
         }
-        
+
         // 処理済みマークを更新
         processedCells.add(cellId);
         lastProcessedTime.set(cellId, currentTime);
-        
+
         // 古いエントリをクリーンアップ（メモリリーク防止）
         if (processedCells.size > 100) {
           const oldestEntries = Array.from(lastProcessedTime.entries())
@@ -768,23 +768,23 @@ const plugin: JupyterFrontEndPlugin<void> = {
                   console.log('Removing existing help button to prevent duplicates');
                   existingHelpButton.remove();
                 }
-                
+
                 const helpButton = createHelpButton();
                 panel.toolbar.addItem('help-button', helpButton);
                 console.log('Help button added to notebook toolbar');
-                
+
                 // デバッグ: DOM要素の存在確認
                 console.log('Help button DOM node:', helpButton.node);
                 console.log('Help button parent:', helpButton.node.parentElement);
                 console.log('Toolbar children count:', panel.toolbar.node.children.length);
-                
+
                 // ヘルプボタンが実際に表示されているか確認
                 setTimeout(() => {
                   const addedButton = panel.toolbar.node.querySelector('.jp-help-button');
                   if (addedButton) {
                     console.log('=== HELP BUTTON DEBUG INFO ===');
                     console.log('Help button found in DOM:', addedButton);
-                    
+
                     // 仮説1-4: CSS/スタイル関連の検証
                     const computedStyle = window.getComputedStyle(addedButton);
                     console.log('CSS Display:', computedStyle.display);
@@ -797,26 +797,26 @@ const plugin: JupyterFrontEndPlugin<void> = {
                     console.log('CSS Color:', computedStyle.color);
                     console.log('CSS Position:', computedStyle.position);
                     console.log('CSS Overflow:', computedStyle.overflow);
-                    
+
                     // 仮説5-6: DOM構造・位置の検証
                     const rect = addedButton.getBoundingClientRect();
                     console.log('Element Rect:', rect);
                     console.log('Element Parent:', addedButton.parentElement);
                     console.log('Element Siblings Count:', addedButton.parentElement?.children.length);
                     console.log('Element Index in Parent:', Array.from(addedButton.parentElement?.children || []).indexOf(addedButton));
-                    
+
                     // 仮説8: ToolbarButton実装の検証
                     console.log('Element Tag Name:', addedButton.tagName);
                     console.log('Element Class List:', addedButton.classList.toString());
                     console.log('Element Text Content:', addedButton.textContent);
                     console.log('Element Inner HTML:', addedButton.innerHTML);
-                    
+
                     // 仮説10: レンダリング問題の検証
                     console.log('Element Offset Width:', addedButton.offsetWidth);
                     console.log('Element Offset Height:', addedButton.offsetHeight);
                     console.log('Element Client Width:', addedButton.clientWidth);
                     console.log('Element Client Height:', addedButton.clientHeight);
-                    
+
                     // ベストプラクティス修正: 強制的な表示スタイル適用
                     addedButton.style.display = 'inline-block !important';
                     addedButton.style.visibility = 'visible !important';
@@ -830,14 +830,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
                     addedButton.style.padding = '8px 12px !important';
                     addedButton.style.fontSize = '14px !important';
                     addedButton.style.fontWeight = 'bold !important';
-                    
+
                     console.log('Applied forced visibility styles to help button');
                     console.log('=== END DEBUG INFO ===');
                   } else {
                     console.error('Help button not found in DOM after adding');
                   }
                 }, 100);
-                
+
               } catch (error) {
                 console.error('Error adding help button to toolbar:', error);
               }
