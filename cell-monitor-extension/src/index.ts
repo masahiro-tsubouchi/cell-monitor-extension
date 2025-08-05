@@ -226,22 +226,25 @@ function updateHelpButtonAppearance(button: any): void {
   }
 
   try {
+    // 共通スタイル設定: 太文字・1.2倍フォントサイズ・白文字色
+    button.node.style.fontWeight = 'bold';
+    button.node.style.fontSize = '1.2em';
+    button.node.style.color = 'white';
+    
     if (helpSession.isActive) {
       // ON状態: アクティブスタイルと「ヘルプ要請中...」表示
       button.addClass('jp-mod-active');
       button.node.textContent = 'ヘルプ要請中...';
       button.node.setAttribute('aria-pressed', 'true');
       button.node.style.backgroundColor = '#ff6b35'; // オレンジ色でアクティブ状態を示す
-      button.node.style.color = 'white';
       console.log('Help button set to ACTIVE state');
     } else {
-      // OFF状態: 通常スタイルと「HELP」表示
+      // OFF状態: 通常スタイルと「講師に助けを求める」表示
       button.removeClass('jp-mod-active');
-      button.node.textContent = 'HELP'; // 新要件: OFF時は「HELP」表示
+      button.node.textContent = '講師に助けを求める'; // 新要件: OFF時は「講師に助けを求める」表示
       button.node.setAttribute('aria-pressed', 'false');
       button.node.style.backgroundColor = '#007acc'; // 青色で通常状態を示す
-      button.node.style.color = 'white';
-      console.log('Help button set to INACTIVE state (HELP)');
+      console.log('Help button set to INACTIVE state (講師に助けを求める)');
     }
   } catch (error) {
     console.error('Error updating help button appearance:', error);
@@ -293,7 +296,7 @@ function createHelpButton(): ToolbarButton {
     className: 'jp-help-button jp-ToolbarButton', // JupyterLab標準クラスを追加
     onClick: () => {}, // 初期化時は空関数
     tooltip: 'ヘルプ要請ボタン - クリックでON/OFF切替',
-    label: 'HELP', // ラベルを明示的に設定
+    label: '講師に助けを求める', // ラベルを明示的に設定
     iconClass: '', // アイコンは使用しない
     enabled: true // 有効化
   });

@@ -1,18 +1,18 @@
 services:
-  instructor-dashboard:
-    build:
-      context: ./instructor-dashboard
-      dockerfile: Dockerfile.dev
-    ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_BASE_URL=http://localhost:8000/api/v1
-      - REACT_APP_WS_URL=ws://localhost:8000
-    depends_on:
-      - fastapi
-    volumes:
-      - ./instructor-dashboard:/app
-      - /app/node_modules
+  # instructor-dashboard:
+  #   build:
+  #     context: ./instructor-dashboard
+  #     dockerfile: Dockerfile.dev
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - REACT_APP_API_BASE_URL=http://localhost:8000/api/v1
+  #     - REACT_APP_WS_URL=ws://localhost:8000
+  #   depends_on:
+  #     - fastapi
+  #   volumes:
+  #     - ./instructor-dashboard:/app
+  #     - /app/node_modules
 
   jupyterlab:
     build:
