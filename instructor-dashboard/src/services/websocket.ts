@@ -82,7 +82,31 @@ class WebSocketService {
           console.log('📊 Dashboard WebSocket message received:', message);
 
           if (message.type === 'progress_update') {
+            // 新機能: 状態保持更新を使用
+            import('../stores/progressDashboardStore').then(({ useProgressDashboardStore }) => {
+              const store = useProgressDashboardStore.getState();
+              
+              // 単一の学生更新の場合は配列に変換
+              const updates = Array.isArray(message.data) ? message.data : [message.data];
+              store.updateStudentsPreservingState(updates);
+            });
+            
+            // 従来のイベントハンドラーも維持（後方互換性）
             this.eventHandlers.onStudentProgressUpdate?.(message.data);
+            
+          } else if (message.type === 'delta_update') {
+            // Step 2A: 差分更新処理
+            import('../stores/progressDashboardStore').then(({ useProgressDashboardStore }) => {
+              const store = useProgressDashboardStore.getState();
+              
+              if (store.deltaMode && message.data) {
+                console.log('📦 差分パッケージ受信:', message.data.metadata);
+                store.applyDeltaUpdate(message.data);
+              } else {
+                console.log('⚠️ 差分更新を受信したが、フルモードまたはデータなし');
+              }
+            });
+            
           } else if (message.type === 'cell_execution') {
             this.eventHandlers.onCellExecution?.(message.data);
           }

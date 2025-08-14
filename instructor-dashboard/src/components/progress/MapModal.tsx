@@ -94,16 +94,13 @@ export const MapModal: React.FC<MapModalProps> = ({
             height: '70vh',
             minHeight: 400,
             position: 'relative',
-            cursor: dragStart ? 'grabbing' : 'grab',
+            cursor: 'default', // ドラッグカーソルを無効化
             overflow: 'hidden',
             display: 'grid',
             placeItems: 'center',
             aspectRatio: '16 / 9'
           }}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={onMouseUp}
+          // モーダル表示時はMAP背景ドラッグを無効化
         >
           {mapImageUrl && (
             <>

@@ -20,8 +20,10 @@
     "teamName": {
       "type": "string",
       "title": "チーム名",
-      "description": "学生が所属するチーム名",
-      "default": "チームA"
+      "description": "学生が所属するチーム名 (チームA-Z または チーム1-99 の形式で入力してください)",
+      "default": "チームA",
+      "pattern": "^チーム([A-Z]|[1-9][0-9]?)$",
+      "examples": ["チームA", "チームB", "チーム1", "チーム10", "チーム99"]
     },
     "userName": {
       "type": "string",

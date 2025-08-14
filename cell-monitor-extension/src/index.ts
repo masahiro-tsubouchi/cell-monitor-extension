@@ -60,6 +60,9 @@ class CellMonitorPlugin {
       // 設定管理の初期化
       await this.settingsManager.initialize(settingRegistry, PLUGIN_ID);
 
+      // 設定変更の監視（チーム名バリデーション）
+      this.setupSettingsValidation();
+
       // エラーハンドラーの設定を更新
       const { showNotifications } = this.settingsManager.getNotificationSettings();
       errorHandler.configure({ showNotifications });
@@ -103,15 +106,51 @@ class CellMonitorPlugin {
   }
 
   /**
+   * 設定バリデーションの監視設定
+   */
+  private setupSettingsValidation(): void {
+    const settings = this.settingsManager.getSettings();
+    if (!settings) return;
+
+    // 設定変更を監視
+    settings.changed.connect(() => {
+      const userInfo = this.settingsManager.getUserInfo();
+      const validation = this.settingsManager.validateTeamName(userInfo.teamName);
+      
+      if (!validation.isValid) {
+        // バリデーションエラーの通知
+        Notification.error(
+          `チーム名設定エラー: ${validation.error}`, 
+          { autoClose: 5000 }
+        );
+        this.logger.error('Team name validation failed:', validation.error);
+      }
+    });
+  }
+
+  /**
    * 新しいセッションの開始
    */
   private startNewSession(): void {
     this.logger.info('Starting new learning session');
+    
+    // セッション開始前にチーム名をバリデーション
+    const userInfo = this.settingsManager.getUserInfo();
+    const validation = this.settingsManager.validateTeamName(userInfo.teamName);
+    
+    if (!validation.isValid) {
+      Notification.error(
+        `セッション開始失敗: ${validation.error}`, 
+        { autoClose: 5000 }
+      );
+      return;
+    }
+
     this.eventManager.startNewSession();
 
     const { showNotifications: showSessionNotifications } = this.settingsManager.getNotificationSettings();
     if (showSessionNotifications) {
-      Notification.info('新しい学習セッションを開始しました', { autoClose: 2000 });
+      Notification.success(`新しい学習セッションを開始しました (${userInfo.teamName})`, { autoClose: 2000 });
     }
   }
 }

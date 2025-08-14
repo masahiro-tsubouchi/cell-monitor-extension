@@ -101,11 +101,56 @@ export const boundPosition = (
 };
 
 /**
- * チームの自動配置計算
+ * 距離計算（論理座標での）
+ */
+export const calculateDistance = (pos1: Position, pos2: Position): number => {
+  return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
+};
+
+/**
+ * アイコン重複チェック・調整機能（画面サイズ適応）
+ */
+export const adjustIconPositionForOverlap = (
+  targetPosition: Position,
+  existingPositions: Position[],
+  minDistance: number = 8, // 8%の最小距離
+  maxAttempts: number = 12,
+  screenWidth: number = 1200 // 画面幅（デフォルトはデスクトップ）
+): Position => {
+  // スマホの場合は最小距離を調整
+  const adjustedMinDistance = screenWidth <= 480 ? Math.max(6, minDistance * 0.75) : minDistance;
+  let adjustedPosition = { ...targetPosition };
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const hasOverlap = existingPositions.some(existingPos => 
+      calculateDistance(adjustedPosition, existingPos) < adjustedMinDistance
+    );
+    
+    if (!hasOverlap) {
+      return boundPosition(adjustedPosition);
+    }
+    
+    // 重複がある場合は螺旋状に新しい位置を探す
+    const angle = (attempt * 60) % 360; // 60度ずつ回転
+    const radius = Math.min(5 + attempt * 2, 15); // 半径を徐々に拡大
+    const radians = (angle * Math.PI) / 180;
+    
+    adjustedPosition = {
+      x: targetPosition.x + Math.cos(radians) * radius,
+      y: targetPosition.y + Math.sin(radians) * radius
+    };
+  }
+  
+  return boundPosition(adjustedPosition);
+};
+
+/**
+ * チームの自動配置計算（重複回避機能付き）
  */
 export const calculateTeamLayout = (
   teamCount: number,
-  containerAspectRatio: number = 16/9
+  containerAspectRatio: number = 16/9,
+  preventOverlap: boolean = true
 ): Position[] => {
   if (teamCount === 0) return [];
 
@@ -127,10 +172,17 @@ export const calculateTeamLayout = (
     const xStep = cols === 1 ? 0 : availableWidth / (cols - 1);
     const yStep = rows === 1 ? 0 : availableHeight / (rows - 1);
 
-    positions.push({
+    const basePosition = {
       x: margin + (cols === 1 ? availableWidth / 2 : colIndex * xStep),
       y: margin + (rows === 1 ? availableHeight / 2 : rowIndex * yStep)
-    });
+    };
+
+    // 重複回避機能が有効な場合は調整
+    const finalPosition = preventOverlap 
+      ? adjustIconPositionForOverlap(basePosition, positions)
+      : basePosition;
+    
+    positions.push(finalPosition);
   }
 
   return positions;

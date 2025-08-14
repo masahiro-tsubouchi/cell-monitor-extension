@@ -29,6 +29,7 @@ import {
   getTeamPriorityIcon,
   generateTeamDataMemoKey
 } from '../../utils/teamCalculations';
+import { getTeamDisplayName, TEAM_DISPLAY_PRESETS } from '../../utils/teamNameUtils';
 
 interface TeamProgressViewProps {
   students: StudentActivity[];
@@ -89,6 +90,13 @@ export const TeamProgressView: React.FC<TeamProgressViewProps> = ({
     if (onExpandedTeamsChange) {
       onExpandedTeamsChange(newExpandedTeams.size);
     }
+
+    // 新機能: ユーザーアクティビティを記録（差分更新システム用）
+    // この操作により、しばらく自動更新が遅延される
+    import('../../stores/progressDashboardStore').then(({ useProgressDashboardStore }) => {
+      const store = useProgressDashboardStore.getState();
+      store.markUserActive();
+    });
   };
 
   // 外部関数を使用（インライン関数を削除）
@@ -142,7 +150,7 @@ export const TeamProgressView: React.FC<TeamProgressViewProps> = ({
               <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                 <GroupIcon sx={{ mr: 1, color: getTeamPriorityColor(team.priority) }} />
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {team.teamName}
+                  {getTeamDisplayName(team.teamName, TEAM_DISPLAY_PRESETS.FULL_UI)}
                 </Typography>
               </Box>
 

@@ -27,6 +27,7 @@ import { TeamMapView } from '../components/progress/TeamMapView';
 import { MetricsPanel } from '../components/progress/MetricsPanel';
 import { ActivityChart } from '../components/progress/ActivityChart';
 import { StudentDetailModal } from '../components/progress/StudentDetailModal';
+import { CompressionStatsPanel } from '../components/progress/CompressionStatsPanel';
 import { StudentActivity } from '../services/dashboardAPI';
 import webSocketService from '../services/websocket';
 import { useNavigate } from 'react-router-dom';
@@ -66,7 +67,11 @@ export const ProgressDashboard: React.FC = () => {
     setAutoRefresh,
     selectStudent,
     updateStudentStatus,
-    clearError
+    clearError,
+    // 新機能: 状態保持関連
+    markUserActive,
+    flushQueuedUpdates,
+    setDeferredUpdates
   } = useProgressDashboardStore();
 
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -75,6 +80,25 @@ export const ProgressDashboard: React.FC = () => {
   useEffect(() => {
     refreshData();
   }, [refreshData]);
+
+  // 新機能: ユーザーインタラクション検出
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      markUserActive();
+    };
+
+    const events = ['mousedown', 'mouseup', 'scroll', 'keydown', 'touchstart'];
+    
+    events.forEach(eventName => {
+      window.addEventListener(eventName, handleUserInteraction, { passive: true });
+    });
+
+    return () => {
+      events.forEach(eventName => {
+        window.removeEventListener(eventName, handleUserInteraction);
+      });
+    };
+  }, [markUserActive]);
 
   // WebSocketイベントハンドラー設定
   useEffect(() => {
@@ -175,6 +199,8 @@ export const ProgressDashboard: React.FC = () => {
   };
 
   const handleRefresh = () => {
+    // 新機能: 手動更新時は保留中の更新も即座に適用
+    flushQueuedUpdates();
     refreshData();
   };
 
@@ -263,6 +289,9 @@ export const ProgressDashboard: React.FC = () => {
         students={students}
         teams={Array.from(new Set(students.map(s => s.teamName).filter((name): name is string => Boolean(name))))}
       />
+
+      {/* Step 2A: 差分更新統計パネル */}
+      <CompressionStatsPanel />
 
       {/* 受講生進捗表示 */}
       <Box sx={{ mb: 4 }}>

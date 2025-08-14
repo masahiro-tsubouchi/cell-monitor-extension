@@ -16,6 +16,7 @@ import {
   CheckCircle as CheckIcon
 } from '@mui/icons-material';
 import { StudentActivity, dashboardAPI } from '../../services/dashboardAPI';
+import { getTeamDisplayName, TEAM_DISPLAY_PRESETS } from '../../utils/teamNameUtils';
 
 interface StudentProgressGridProps {
   students: StudentActivity[];
@@ -118,7 +119,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, onClick, onDismissHe
             </Typography>
             {student.teamName && (
               <Typography variant="caption" color="primary.main" sx={{ display: 'block' }}>
-                📋 {student.teamName}
+                📋 {getTeamDisplayName(student.teamName, TEAM_DISPLAY_PRESETS.FULL_UI)}
               </Typography>
             )}
           </Box>
