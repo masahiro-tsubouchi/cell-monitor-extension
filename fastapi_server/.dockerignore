@@ -24,8 +24,8 @@ wheels/
 .installed.cfg
 *.egg
 
-# 開発・テスト関連
-tests/
+# 開発・テスト関連（testsディレクトリは依存関係インストールのため保持）
+# tests/
 pytest_cache/
 .coverage
 htmlcov/

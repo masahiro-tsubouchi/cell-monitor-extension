@@ -17,17 +17,21 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# テスト依存関係のインストール
-COPY tests/requirements.txt tests/requirements.txt
-RUN pip install --no-cache-dir -r tests/requirements.txt
+# 開発環境用のビルド引数
+ARG BUILD_ENV=production
+
+# アプリケーションソースコードのコピー
+COPY . .
+
+# 条件付きテスト依存関係のインストール（開発環境のみ）
+RUN if [ "$BUILD_ENV" = "development" ] && [ -f "tests/requirements.txt" ]; then \
+        pip install --no-cache-dir -r tests/requirements.txt; \
+    fi
 
 # 非rootユーザーでの実行（セキュリティ強化）
 RUN useradd --create-home --shell /bin/bash app && \
     chown -R app:app /app
 USER app
-
-# アプリケーションソースコードのコピー
-COPY --chown=app:app . .
 
 # ポート公開（環境変数で制御可能）
 ARG FASTAPI_PORT=8000

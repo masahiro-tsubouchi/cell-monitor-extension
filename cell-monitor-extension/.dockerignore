@@ -44,7 +44,7 @@ coverage/
 .pytest_cache/
 
 # ビルドツール関連
-tsconfig.json
+# tsconfig.json  # TypeScriptビルドに必要なため除外から削除
 jest.config.js
 webpack.config.js
 

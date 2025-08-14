@@ -21,7 +21,14 @@ import {
   CheckCircle as CheckIcon
 } from '@mui/icons-material';
 import { StudentActivity } from '../../services/dashboardAPI';
+import { TeamStats } from '../../types/domain';
 import { getInstructorSettings, updateExpandedTeams } from '../../utils/instructorStorage';
+import {
+  calculateTeamData,
+  getTeamPriorityColor,
+  getTeamPriorityIcon,
+  generateTeamDataMemoKey
+} from '../../utils/teamCalculations';
 
 interface TeamProgressViewProps {
   students: StudentActivity[];
@@ -29,16 +36,8 @@ interface TeamProgressViewProps {
   onExpandedTeamsChange?: (count: number) => void;
 }
 
-interface TeamData {
-  teamName: string;
+interface TeamData extends TeamStats {
   students: StudentActivity[];
-  totalStudents: number;
-  activeCount: number;
-  idleCount: number;
-  errorCount: number;
-  helpCount: number;
-  priority: 'high' | 'medium' | 'low';
-  lastActivity: string;
 }
 
 export const TeamProgressView: React.FC<TeamProgressViewProps> = ({
@@ -52,76 +51,22 @@ export const TeamProgressView: React.FC<TeamProgressViewProps> = ({
     return new Set(settings.expandedTeams);
   });
 
-  // チーム別にデータをグループ化
+  // チーム別データの計算（外部関数使用）
   const teamsData = useMemo((): TeamData[] => {
-    const teamMap = new Map<string, StudentActivity[]>();
-
-    // チーム別にグループ化
-    students.forEach(student => {
-      const teamName = student.teamName || '未割り当て';
-      if (!teamMap.has(teamName)) {
-        teamMap.set(teamName, []);
-      }
-      teamMap.get(teamName)!.push(student);
-    });
-
-    // チームデータを作成し、優先度でソート
-    const teams: TeamData[] = Array.from(teamMap.entries()).map(([teamName, teamStudents]) => {
-      const activeCount = teamStudents.filter(s => s.status === 'active').length;
-      const idleCount = teamStudents.filter(s => s.status === 'idle').length;
-      const errorCount = teamStudents.filter(s => s.status === 'error').length;
-      const helpCount = teamStudents.filter(s => s.isRequestingHelp).length;
-
-      // 優先度計算
-      let priority: 'high' | 'medium' | 'low' = 'low';
-      if (errorCount > 0 || helpCount > 0) {
-        priority = 'high';
-      } else if (idleCount > activeCount) {
-        priority = 'medium';
-      }
-
-      // 最新活動時刻を計算
-      const latestActivity = teamStudents.reduce((latest, student) => {
-        if (student.lastActivity && student.lastActivity !== '不明') {
-          return latest; // 簡略化：現在は最初の値を使用
-        }
-        return latest;
-      }, '不明');
-
+    const teamStats = calculateTeamData(students, expandedTeams);
+    
+    // 学生配列を追加してTeamData形式に変換
+    return teamStats.map(stats => {
+      const teamStudents = students.filter(s => 
+        (s.teamName || '未割り当て') === stats.teamName
+      );
+      
       return {
-        teamName,
+        ...stats,
         students: teamStudents,
-        totalStudents: teamStudents.length,
-        activeCount,
-        idleCount,
-        errorCount,
-        helpCount,
-        priority,
-        lastActivity: latestActivity
       };
     });
-
-    // ソート順: 1.展開状態 2.優先度 3.チーム名
-    return teams.sort((a, b) => {
-      const aExpanded = expandedTeams.has(a.teamName);
-      const bExpanded = expandedTeams.has(b.teamName);
-
-      // 展開状態での優先順位（展開中が上位）
-      if (aExpanded !== bExpanded) {
-        return bExpanded ? 1 : -1;
-      }
-
-      // 同じ展開状態なら優先度順
-      const priorityOrder = { high: 3, medium: 2, low: 1 };
-      const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
-      if (priorityDiff !== 0) {
-        return priorityDiff;
-      }
-
-      // 優先度も同じならチーム名順
-      return a.teamName.localeCompare(b.teamName);
-    });
-  }, [students, expandedTeams]);
+  }, [students, expandedTeams]); // 依存配列を修正
 
   const handleAccordionChange = (teamName: string) => (
     event: React.SyntheticEvent,
@@ -146,31 +91,7 @@ export const TeamProgressView: React.FC<TeamProgressViewProps> = ({
     }
   };
 
-  const getPriorityColor = (priority: TeamData['priority']) => {
-    switch (priority) {
-      case 'high':
-        return '#f44336'; // 赤
-      case 'medium':
-        return '#ff9800'; // オレンジ
-      case 'low':
-        return '#4caf50'; // 緑
-      default:
-        return '#9e9e9e'; // グレー
-    }
-  };
-
-  const getPriorityIcon = (priority: TeamData['priority']) => {
-    switch (priority) {
-      case 'high':
-        return '🚨';
-      case 'medium':
-        return '⚠️';
-      case 'low':
-        return '✅';
-      default:
-        return '⚪';
-    }
-  };
+  // 外部関数を使用（インライン関数を削除）
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -198,28 +119,28 @@ export const TeamProgressView: React.FC<TeamProgressViewProps> = ({
           onChange={handleAccordionChange(team.teamName)}
           sx={{
             mb: 1,
-            border: `2px solid ${getPriorityColor(team.priority)}`,
+            border: `2px solid ${getTeamPriorityColor(team.priority)}`,
             '&:before': { display: 'none' }
           }}
         >
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}
             sx={{
-              backgroundColor: `${getPriorityColor(team.priority)}10`,
+              backgroundColor: `${getTeamPriorityColor(team.priority)}10`,
               '&:hover': {
-                backgroundColor: `${getPriorityColor(team.priority)}20`
+                backgroundColor: `${getTeamPriorityColor(team.priority)}20`
               }
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', pr: 2 }}>
               {/* 優先度アイコン */}
               <Typography sx={{ fontSize: '24px', mr: 2 }}>
-                {getPriorityIcon(team.priority)}
+                {getTeamPriorityIcon(team.priority)}
               </Typography>
 
               {/* チーム名 */}
               <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                <GroupIcon sx={{ mr: 1, color: getPriorityColor(team.priority) }} />
+                <GroupIcon sx={{ mr: 1, color: getTeamPriorityColor(team.priority) }} />
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                   {team.teamName}
                 </Typography>
@@ -312,7 +233,7 @@ export const TeamProgressView: React.FC<TeamProgressViewProps> = ({
                             width: 32,
                             height: 32,
                             mr: 1,
-                            backgroundColor: getPriorityColor(
+                            backgroundColor: getTeamPriorityColor(
                               student.status === 'error' ? 'high' :
                               student.status === 'active' ? 'low' : 'medium'
                             )

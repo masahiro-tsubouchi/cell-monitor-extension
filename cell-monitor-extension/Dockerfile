@@ -36,6 +36,15 @@ USER jupyter
 # アプリケーションソースコードのコピー
 COPY --chown=jupyter:jupyter . .
 
+# Node.js依存関係の事前インストール（jupyterユーザーとして）
+RUN yarn install
+
+# デバッグ: ファイル構造とtsconfig.json内容を確認
+RUN pwd && ls -la && ls -la src/ && cat tsconfig.json
+
+# TypeScriptコンパイルを事前に実行（権限問題を回避）
+RUN npm run build:lib
+
 # 拡張機能のインストール（フロントエンドも自動ビルド）
 USER root
 RUN pip install --no-cache-dir .
