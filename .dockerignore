@@ -1,0 +1,54 @@
+# ==================================================
+# Docker Ignore - Global Project Level
+# ==================================================
+
+# Git関連
+.git
+.gitignore
+.gitattributes
+
+# Docker関連
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# ドキュメント
+README.md
+*.md
+docs/
+
+# IDE・エディタ設定
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ログ
+*.log
+logs/
+
+# 一時ファイル
+*.tmp
+*.temp
+.cache/
+
+# 環境変数（機密情報）
+.env
+.env.local
+.env.*.local
+
+# テスト関連
+*.test.js
+*.spec.js
+coverage/
+.nyc_output/
+
+# プロダクションビルドで不要なもの
+scripts/
+test/
+tests/

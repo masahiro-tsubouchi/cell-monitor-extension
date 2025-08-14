@@ -1,0 +1,45 @@
+# ==================================================
+# React Dashboard Docker Ignore
+# ==================================================
+
+# Node.js関連
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
+.yarnrc
+
+# ビルド成果物
+build/
+dist/
+
+# 開発・テスト関連
+src/**/*.test.*
+src/**/*.spec.*
+cypress/
+e2e/
+coverage/
+.nyc_output/
+
+# IDE・エディタ設定
+.vscode/
+.idea/
+
+# 環境変数
+.env*
+
+# Hot reload関連
+.hot-update.js
+
+# キャッシュ
+.cache/
+.parcel-cache/
+
+# ログファイル
+*.log
+
+# OS関連
+.DS_Store
+Thumbs.db

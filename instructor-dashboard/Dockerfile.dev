@@ -1,21 +1,36 @@
-# Use the official Node.js image as a base
-FROM node:18-alpine
+# 環境変数でNodeバージョンを指定可能
+ARG NODE_VERSION=18-alpine
+FROM node:${NODE_VERSION}
 
-# Set the working directory in the container
+# 作業ディレクトリの設定
 WORKDIR /app
 
-# Copy package.json and package-lock.json to the working directory
-# This is done to leverage Docker layer caching
+# パッケージマネージャの最適化
+RUN npm config set fund false && npm config set audit false
+
+# 依存関係のコピーとインストール（Docker層キャッシュの活用）
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies)
-RUN npm install
+# 開発依存関係を含むすべての依存関係をインストール
+RUN npm install && npm cache clean --force
 
-# Copy the rest of the application's source code to the working directory
+# アプリケーションソースコードのコピー
 COPY . .
 
-# Expose the port the app runs on
+# 非rootユーザーでの実行（セキュリティ強化）
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S react -u 1001 -G nodejs && \
+    chown -R react:nodejs /app
+
+USER react
+
+# ポート公開
 EXPOSE 3000
 
-# The command to start the app (React development server)
+# ヘルスチェック用のcurlインストール
+USER root
+RUN apk add --no-cache curl
+USER react
+
+# React開発サーバーの起動
 CMD ["npm", "start"]

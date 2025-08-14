@@ -9,19 +9,25 @@
       "type": "string",
       "title": "サーバーURL",
       "description": "セル実行データを送信するFastAPIサーバーのURL",
-      "default": "/cell-monitor"
+      "default": "http://fastapi:8000/api/v1/events"
     },
-    "userId": {
+    "emailAddress": {
       "type": "string",
-      "title": "ユーザーID",
-      "description": "ユーザーの一意識別子",
-      "default": ""
+      "title": "メールアドレス",
+      "description": "学生のメールアドレス（ユーザー識別子として使用）",
+      "default": "student001@example.com"
+    },
+    "teamName": {
+      "type": "string",
+      "title": "チーム名",
+      "description": "学生が所属するチーム名",
+      "default": "チームA"
     },
     "userName": {
       "type": "string",
       "title": "ユーザー名",
       "description": "ユーザーの表示名",
-      "default": "匿名"
+      "default": "テスト学生001"
     },
     "batchSize": {
       "type": "integer",

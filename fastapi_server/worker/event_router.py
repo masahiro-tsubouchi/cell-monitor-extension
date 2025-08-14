@@ -92,10 +92,10 @@ class EventRouter:
             bool: 処理が成功したかどうか
         """
         try:
-            # イベントタイプを抽出
-            event_type = event_data.get("event")
+            # イベントタイプを抽出（eventTypeフィールドを使用）
+            event_type = event_data.get("eventType")
             if not event_type:
-                logger.error("イベントデータにeventフィールドがありません")
+                logger.error("イベントデータにeventTypeフィールドがありません")
                 return False
 
             # 対応するハンドラーを探す
@@ -137,21 +137,28 @@ class EventRouter:
         try:
             event = EventData.model_validate(event_data)
 
-            if not event.userId:
+            if not event.emailAddress:
                 logger.error(
-                    "userIdがありません。デフォルトハンドラーをスキップします。"
+                    "emailAddressがありません。デフォルトハンドラーをスキップします。"
                 )
                 return False
 
             # ユーザー情報をPostgreSQLに保存/取得
-            student = crud_student.get_or_create_student(db, user_id=event.userId)
+            student = crud_student.get_or_create_student(
+                db,
+                email=event.emailAddress,
+                name=event.userName,
+                team_name=event.teamName,
+            )
             logger.info(
-                f"PostgreSQL処理完了: ユーザーID {student.user_id} (DB ID: {student.id})"
+                f"PostgreSQL処理完了: メールアドレス {student.email} (DB ID: {student.id})"
             )
 
             # 時系列データをInfluxDBに書き込み
             write_progress_event(event)
-            logger.info(f"InfluxDB書き込み完了: {event.userId}, {event.eventType}")
+            logger.info(
+                f"InfluxDB書き込み完了: {event.emailAddress}, {event.eventType}"
+            )
 
             return True
         except Exception as e:
@@ -178,17 +185,24 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
     # 1. Pydanticモデルでイベントデータを検証・変換
     event = EventData.model_validate(event_data)
 
-    if not all([event.userId, event.notebookPath, event.cellId]):
-        logger.error("必須フィールド (userId, notebookPath, cellId) が不足しています。")
+    if not all([event.emailAddress, event.notebookPath, event.cellId]):
+        logger.error(
+            "必須フィールド (emailAddress, notebookPath, cellId) が不足しています。"
+        )
         return
 
     # 2. 関連エンティティの取得または作成
-    if not event.userId or not event.notebookPath:
-        logger.error("userId または notebookPath が None です")
+    if not event.emailAddress or not event.notebookPath:
+        logger.error("emailAddress または notebookPath が None です")
         return
-    student, _ = crud_student.get_or_create_student(db, user_id=event.userId)
-    notebook, _ = crud_notebook.get_or_create_notebook(db, path=event.notebookPath)
-    cell, _ = crud_notebook.get_or_create_cell(db, notebook_id=notebook.id, event=event)
+    student = crud_student.get_or_create_student(
+        db, email=event.emailAddress, name=event.userName, team_name=event.teamName
+    )
+    notebook = crud_notebook.get_or_create_notebook(db, path=event.notebookPath)
+    cell = crud_notebook.get_or_create_cell(db, notebook_id=notebook.id, event=event)
+
+    # セッションの作成または取得（学生の最新アクティブセッション）
+    session = crud_student.get_or_create_active_session(db, student_id=student.id)
 
     # 3. セル実行履歴を作成
     crud_execution.create_cell_execution(
@@ -197,6 +211,7 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
         student_id=student.id,
         notebook_id=notebook.id,
         cell_id=cell.id,
+        session_id=session.id,
     )
     logger.info(
         f"PostgreSQLへの実行履歴保存完了: student_id={student.id}, notebook_id={notebook.id}, cell_id={cell.id}"
@@ -215,9 +230,43 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
     progress_event = StudentProgress.model_validate(progress_data_dict)
 
     # 5. 時系列データをInfluxDBに書き込み
-    await write_progress_event(progress_event)
-    logger.info(f"InfluxDBへの書き込み完了: {event.userId}, {event.eventType}")
+    write_progress_event(progress_event)
+    logger.info(f"InfluxDBへの書き込み完了: {event.emailAddress}, {event.eventType}")
+
+    # 6. WebSocket経由でダッシュボードにリアルタイム更新を送信
+    await notify_dashboard_update(event, student)
+
     return True
+
+
+async def notify_dashboard_update(event: EventData, student):
+    """ダッシュボード向けWebSocket通知を送信"""
+    try:
+        from db.redis_client import get_redis_client
+        import json
+
+        # ダッシュボード更新データを作成
+        dashboard_update = {
+            "type": "student_progress_update",
+            "emailAddress": event.emailAddress,
+            "userName": student.name or event.userName or event.emailAddress,
+            "teamName": event.teamName,
+            "currentNotebook": event.notebookPath or "/unknown",
+            "lastActivity": "今",
+            "status": "active",
+            "cellExecutions": 1,  # インクリメント用
+            "errorCount": 1 if event.hasError else 0,
+            "timestamp": event.eventTime,
+        }
+
+        # Redis Pub/Sub経由でダッシュボードに通知
+        redis_client = await get_redis_client()
+        await redis_client.publish("dashboard_updates", json.dumps(dashboard_update))
+        logger.info(f"ダッシュボード更新通知送信: {event.emailAddress}")
+
+    except Exception as e:
+        logger.error(f"ダッシュボード更新通知エラー: {e}")
+        # エラーがあってもメイン処理は継続
 
 
 # ノートブック保存イベントのハンドラー
@@ -237,15 +286,17 @@ async def handle_notebook_save(event_data: Dict[str, Any], db: Session):
     try:
         event = EventData.model_validate(event_data)
 
-        if not event.userId:
+        if not event.emailAddress:
             logger.error(
-                "userIdがありません。ノートブック保存ハンドラーをスキップします。"
+                "emailAddressがありません。ノートブック保存ハンドラーをスキップします。"
             )
             return
 
         # ユーザー情報をPostgreSQLに保存/取得
-        student = crud_student.get_or_create_student(db, user_id=event.userId)
-        logger.info(f"PostgreSQL処理完了: ユーザーID {student.user_id}")
+        student = crud_student.get_or_create_student(
+            db, email=event.emailAddress, name=event.userName, team_name=event.teamName
+        )
+        logger.info(f"PostgreSQL処理完了: メールアドレス {student.email}")
 
         # 時系列データをInfluxDBに書き込み
         write_progress_event(event)
@@ -441,7 +492,7 @@ event_router = EventRouter()
 
 # イベントタイプとハンドラー関数の登録
 event_router.register_handler(
-    "cell_execution", handle_cell_execution
+    "cell_executed", handle_cell_execution
 )  # フロントエンドのイベント名に合わせる
 event_router.register_handler("notebook_save", handle_notebook_save)
 

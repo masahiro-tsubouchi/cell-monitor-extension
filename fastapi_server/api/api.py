@@ -16,6 +16,9 @@ from api.endpoints import (
     instructor_websocket,
     instructors,
     instructor_status,
+    dashboard,
+    dashboard_websocket,
+    classroom,
 )
 
 api_router = APIRouter()
@@ -48,3 +51,8 @@ api_router.include_router(
 api_router.include_router(
     instructor_status.router, prefix="/instructor_status", tags=["instructor_status"]
 )
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(
+    dashboard_websocket.router, prefix="/dashboard", tags=["dashboard_websocket"]
+)
+api_router.include_router(classroom.router, prefix="/classroom", tags=["classroom"])

@@ -13,7 +13,8 @@ class ConnectionManager:
 
     def disconnect(self, websocket: WebSocket):
         """WebSocket接続をリストから削除する"""
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: str):
         """接続中のすべてのクライアントにメッセージを一斉送信する"""

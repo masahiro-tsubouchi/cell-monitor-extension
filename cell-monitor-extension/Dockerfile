@@ -1,49 +1,69 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12-slim
+# 環境変数でPythonバージョンを指定可能
+ARG PYTHON_VERSION=3.12-slim
+FROM python:${PYTHON_VERSION}
 
-# Set the working directory in the container
+# 作業ディレクトリの設定
 WORKDIR /app
 
-# Install system dependencies, including Node.js and npm
-RUN apt-get update && apt-get install -y curl git && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs
+# 環境変数でNodeバージョンを指定可能
+ARG NODE_MAJOR_VERSION=20
 
-# Enable corepack to manage yarn
+# システム依存関係のインストール（Node.js、npm、curlなど）
+RUN apt-get update && apt-get install -y curl git && \
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR_VERSION}.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# corepackを有効化してyarnを管理
 RUN corepack enable
 
-# Copy the requirements file into the container
-COPY requirements.txt .
+# Python環境の最適化
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install any needed packages specified in requirements.txt
+# 依存関係のコピーとインストール（Docker層キャッシュの活用）
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application's source code from the host to the container
-COPY . .
+# 非rootユーザーでの実行（セキュリティ強化）
+RUN useradd --create-home --shell /bin/bash jupyter && \
+    chown -R jupyter:jupyter /app
+USER jupyter
 
-# Install the extension
-# This will also build the frontend extension
+# アプリケーションソースコードのコピー
+COPY --chown=jupyter:jupyter . .
+
+# 拡張機能のインストール（フロントエンドも自動ビルド）
+USER root
 RUN pip install --no-cache-dir .
+USER jupyter
 
-# Schema files are now automatically placed by the build process defined in pyproject.toml.
-# The manual copy logic has been removed.
-
-# Create jupyter config directory
+# Jupyter設定ディレクトリの作成
+USER root
 RUN mkdir -p /etc/jupyter
 
-# Copy CSP configuration to allow FastAPI server connection
+# CSP設定をコピー（FastAPIサーバー接続許可）
 COPY jupyter_server_config.py /etc/jupyter/
 
-# Expose port 8888 to the host
-EXPOSE 8888
+# ポート公開（環境変数で制御可能）
+ARG JUPYTERLAB_PORT=8888
+EXPOSE ${JUPYTERLAB_PORT}
 
-# Check if schema files are properly installed
+# 拡張機能のスキーマファイルが正しくインストールされているかチェック
 RUN ls -la /usr/local/share/jupyter/lab/schemas/ || echo "No schemas directory" && \
     ls -la /usr/local/share/jupyter/lab/schemas/cell-monitor/ || echo "No cell-monitor schema directory"
 
-# Run JupyterLab when the container launches
-# The --ip='0.0.0.0' flag makes the server accessible from outside the container
-# The --allow-root flag is necessary to run as the root user in the container
-# The --no-browser flag prevents JupyterLab from trying to open a browser inside the container
-# The --ServerApp.token='' disables token authentication for easier access in a local dev environment
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--allow-root", "--no-browser", "--ServerApp.token="]
+# ヘルスチェック設定
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${JUPYTERLAB_PORT}/lab || exit 1
+
+# 環境変数でJupyterトークンを制御可能
+ARG JUPYTER_TOKEN=easy
+ENV JUPYTER_TOKEN=${JUPYTER_TOKEN}
+
+# JupyterLabの起動（環境変数でトークンを制御）
+USER jupyter
+CMD ["sh", "-c", "if [ -z \"$JUPYTER_TOKEN\" ]; then jupyter lab --ip=0.0.0.0 --no-browser --ServerApp.token=''; else jupyter lab --ip=0.0.0.0 --no-browser --ServerApp.token=\"$JUPYTER_TOKEN\"; fi"]

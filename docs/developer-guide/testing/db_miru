@@ -1,0 +1,145 @@
+# 100人受講生テストで保存されたデータの確認方法
+
+## 概要
+
+100人受講生テストを実行すると、PostgreSQLとInfluxDBに大量のデータが保存されます。このドキュメントでは、Dockerコンテナに接続し、保存されたデータを確認する方法を説明します。
+
+## 1. PostgreSQLのデータ確認
+
+PostgreSQLには、学生情報、ノートブック、セル実行履歴などの構造化データが保存されます。
+
+### **1.1. PostgreSQLコンテナに接続**
+
+```bash
+# 1. PostgreSQLコンテナIDを取得
+docker ps
+
+# 2. psqlでコンテナに接続
+# docker exec -it <container_id> psql -U <username> -d <database_name>
+docker exec -it jupyter-extensionver2-postgres-1 psql -U user -d cell_monitor
+```
+psql -U admin -d progress_db
+
+### **1.2. 保存されたデータを確認するSQLクエリ**
+
+`psql`プロンプトで以下のクエリを実行します。
+
+#### **学生データ（10人）**
+```sql
+-- 10人の学生が登録されているか確認
+SELECT COUNT(*) FROM students;
+
+-- 学生一覧表示
+SELECT user_id, user_name FROM students ORDER BY user_id LIMIT 10;
+```
+
+#### **ノートブックデータ**
+```sql
+-- 登録されたノートブック数を確認
+SELECT COUNT(*) FROM notebooks;
+
+-- ノートブック一覧表示
+SELECT notebook_path, owner_id FROM notebooks LIMIT 10;
+```
+
+#### **セル実行履歴**
+```sql
+-- 500件のセル実行履歴が登録されているか確認
+SELECT COUNT(*) FROM cell_executions;
+
+-- 最新のセル実行履歴を10件表示
+SELECT event_id, user_id, notebook_path, execution_count, has_error
+FROM cell_executions
+ORDER BY event_time DESC
+LIMIT 10;
+```
+
+#### **エラーが発生した実行履歴**
+```sql
+-- エラーが発生した実行履歴のみ表示
+SELECT user_id, notebook_path, error_message
+FROM cell_executions
+WHERE has_error = TRUE;
+```
+
+## 2. InfluxDBのデータ確認
+
+InfluxDBには、パフォーマンスメトリクスなどの時系列データが保存されます。
+
+### **2.1. InfluxDBコンテナに接続**
+
+```bash
+# 1. InfluxDBコンテナIDを取得
+docker ps
+
+# 2. InfluxDB CLIでコンテナに接続
+# docker exec -it <container_id> influx
+docker exec -it jupyter-extensionver2-influxdb-1 influx
+```
+
+### **2.2. 保存されたデータを確認するFluxクエリ**
+
+InfluxDB CLIプロンプトで以下のクエリを実行します。
+
+#### **データベース一覧表示**
+```flux
+show databases
+```
+
+#### **データベース選択**
+```flux
+use cell_monitor
+```
+
+#### **Measurement一覧表示**
+```flux
+show measurements
+```
+
+#### **セル実行イベントの確認**
+```flux
+-- 直近1時間のセル実行イベントを10件表示
+SELECT * FROM cell_execution_events WHERE time > now() - 1h LIMIT 10;
+```
+
+#### **特定の学生のイベント確認**
+```flux
+-- student_001のイベントを10件表示
+SELECT * FROM cell_execution_events WHERE "userId" = 'student_001' LIMIT 10;
+```
+
+## 3. Redisのデータ確認（リアルタイム）
+
+Redisには、Pub/Subを通じてリアルタイムでイベントデータが流れます。
+
+### **3.1. Redisコンテナに接続**
+
+```bash
+# 1. RedisコンテナIDを取得
+docker ps
+
+# 2. redis-cliでコンテナに接続
+# docker exec -it <container_id> redis-cli
+docker exec -it jupyter-extensionver2-redis-1 redis-cli
+```
+
+### **3.2. Pub/Subチャンネルの監視**
+
+`redis-cli`プロンプトで以下のコマンドを実行します。
+
+#### **イベントデータチャンネル監視**
+```redis
+SUBSCRIBE progress_events
+```
+
+#### **通知チャンネル監視**
+```redis
+SUBSCRIBE notifications
+```
+
+#### **エラーログチャンネル監視**
+```redis
+SUBSCRIBE error_logs
+```
+
+これにより、テスト実行中にリアルタイムで流れるデータを確認できます。

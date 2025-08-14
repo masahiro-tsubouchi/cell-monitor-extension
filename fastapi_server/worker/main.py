@@ -16,11 +16,18 @@ from db.redis_client import (  # noqa: E402
     PROGRESS_CHANNEL,
     get_redis_client,
 )
-from db.session import DbSessionLocal  # noqa: E402
+from db.session import SessionLocal  # noqa: E402
 from worker.event_router import event_router  # noqa: E402
 
 # ロガーの設定
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("/app/worker.log"),
+    ],
+)
 logger = logging.getLogger(__name__)
 
 # Worker用のDBセッションを作成
@@ -28,7 +35,7 @@ engine = create_engine(settings.DATABASE_URL)
 
 
 def get_db():
-    db = DbSessionLocal()
+    db = SessionLocal()
     try:
         yield db
     finally:
@@ -37,27 +44,59 @@ def get_db():
 
 async def listen_to_redis():
     """RedisのPub/Subをリッスンし、イベントルーターを使用してイベントを処理する"""
-    redis_client = redis.Redis(
-        host=settings.REDIS_HOST, port=settings.REDIS_PORT, decode_responses=True
-    )
-    pubsub = redis_client.pubsub()
-    await pubsub.subscribe(PROGRESS_CHANNEL)
+    print("[WORKER] Starting worker process...")
+    logger.info("[WORKER] Starting worker process...")
 
-    logger.info(f"Worker listening on channel: '{PROGRESS_CHANNEL}'")
+    try:
+        redis_client = redis.Redis(
+            host=settings.REDIS_HOST, port=settings.REDIS_PORT, decode_responses=True
+        )
+        print(
+            f"[WORKER] Redis client created: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
+        )
+        logger.info(
+            f"[WORKER] Redis client created: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
+        )
+
+        # Redis接続テスト
+        await redis_client.ping()
+        print("[WORKER] Redis connection successful")
+        logger.info("[WORKER] Redis connection successful")
+
+        pubsub = redis_client.pubsub()
+        await pubsub.subscribe(PROGRESS_CHANNEL)
+        print(f"[WORKER] Subscribed to channel: '{PROGRESS_CHANNEL}'")
+        logger.info(f"[WORKER] Subscribed to channel: '{PROGRESS_CHANNEL}'")
+
+    except Exception as e:
+        print(f"[WORKER] Failed to initialize Redis connection: {e}")
+        logger.error(f"[WORKER] Failed to initialize Redis connection: {e}")
+        raise
+
+    print("[WORKER] Starting message listening loop...")
+    logger.info("[WORKER] Starting message listening loop...")
 
     while True:
         try:
+            print("[WORKER] Waiting for message...")
             message = await pubsub.get_message(
-                ignore_subscribe_messages=True, timeout=None
+                ignore_subscribe_messages=True, timeout=10.0  # 10秒タイムアウト追加
             )
             if message:
-                logger.info(f"Received message: {message['data']}")
+                print(f"[WORKER] Received message: {message['data']}")
+                logger.info(f"[WORKER] Received message: {message['data']}")
 
                 # メッセージをJSONとしてパース
                 event_data = json.loads(message["data"])
+                print(
+                    f"[WORKER] Parsed event data: {event_data.get('eventType', 'unknown')}"
+                )
+                logger.info(
+                    f"[WORKER] Parsed event data: {event_data.get('eventType', 'unknown')}"
+                )
 
                 # DBセッションを取得
-                db = DbSessionLocal()
+                db = SessionLocal()
                 try:
                     # イベントルーターを使用してイベントタイプに基づいて処理
                     success = await event_router.route_event(event_data, db)
@@ -65,7 +104,7 @@ async def listen_to_redis():
                     if success:
                         # 処理が成功したら通知を送信
                         notification = {
-                            "userId": event_data.get("userId"),
+                            "emailAddress": event_data.get("emailAddress"),
                             "notebookPath": event_data.get("notebookPath"),
                             "event": event_data.get("event"),
                             "status": "processed",
@@ -82,7 +121,7 @@ async def listen_to_redis():
                         # 処理に失敗した場合はエラーログを送信
                         error_log = {
                             "timestamp": event_data.get("timestamp", "unknown"),
-                            "userId": event_data.get("userId", "unknown"),
+                            "emailAddress": event_data.get("emailAddress", "unknown"),
                             "event": event_data.get("event", "unknown"),
                             "error": "イベント処理に失敗しました",
                             "status": "failed",
@@ -94,6 +133,10 @@ async def listen_to_redis():
                         logger.error(f"処理失敗: {error_log}")
                 finally:
                     db.close()
+            else:
+                # メッセージがない場合（タイムアウト）は何もしない
+                print("[WORKER] No message received (timeout)")
+                continue
 
         except Exception as e:
             logger.error(f"イベント処理中に予期しないエラーが発生しました: {e}")

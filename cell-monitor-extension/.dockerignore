@@ -1,0 +1,60 @@
+# ==================================================
+# JupyterLab Extension Docker Ignore
+# ==================================================
+
+# Node.js関連
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python関連
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# JupyterLab関連
+*.tsbuildinfo
+.jupyter
+.local
+
+# TypeScript関連
+*.d.ts.map
+
+# テスト・カバレッジ
+coverage/
+.nyc_output/
+.pytest_cache/
+
+# ビルドツール関連
+tsconfig.json
+jest.config.js
+webpack.config.js
+
+# IDE・エディタ設定
+.vscode/
+.idea/
+
+# ログファイル
+*.log
+
+# OS関連
+.DS_Store
+Thumbs.db

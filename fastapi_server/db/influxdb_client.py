@@ -96,16 +96,19 @@ def write_progress_event(progress: Union[StudentProgress, EventData]):
     )
 
     # イベントタイプによって追加フィールドを決定
+    event_type = progress.eventType if hasattr(progress, "eventType") else "unknown"
     additional_fields = {}
-    if progress.event == "cell_execution":
+    if event_type == "cell_executed":
         # セル実行イベントの場合は実行結果や実行時間を保存
         additional_fields["success"] = (
-            progress.success if hasattr(progress, "success") else True
+            not progress.hasError if hasattr(progress, "hasError") else True
         )
         additional_fields["duration"] = (
-            progress.duration if hasattr(progress, "duration") else 0
+            progress.executionDurationMs
+            if hasattr(progress, "executionDurationMs")
+            else 0
         )
-    elif progress.event == "notebook_save":
+    elif event_type == "notebook_save":
         # ノートブック保存イベントの場合は保存されたセル数などを保存
         additional_fields["cell_count"] = (
             progress.cellCount if hasattr(progress, "cellCount") else 0
@@ -115,10 +118,12 @@ def write_progress_event(progress: Union[StudentProgress, EventData]):
     point = (
         Point("student_progress")
         # 基本タグ（クエリの一般的な絞り込みに使用）
-        .tag("userId", progress.userId)
+        .tag("emailAddress", progress.emailAddress)
+        .tag("userName", progress.userName or "")
+        .tag("teamName", progress.teamName or "")
         .tag(
             "event",
-            progress.eventType if isinstance(progress, EventData) else progress.event,
+            event_type,
         )
         .tag("notebook", notebook_name)
         .tag("directory", notebook_dir)
@@ -151,7 +156,11 @@ def write_progress_event(progress: Union[StudentProgress, EventData]):
             "executionCount",
             progress.executionCount if progress.executionCount is not None else -1,
         )
-        .time(progress.timestamp)
+        .time(
+            progress.eventTime
+            if hasattr(progress, "eventTime") and progress.eventTime
+            else None
+        )
     )
 
     # 追加フィールドがあれば追加
@@ -168,7 +177,7 @@ def write_progress_event(progress: Union[StudentProgress, EventData]):
             bucket=settings.INFLUXDB_BUCKET, org=settings.INFLUXDB_ORG, record=point
         )
         logger.info(
-            f"InfluxDBへのイベント書き込み成功: ユーザー={progress.userId}, イベント={progress.event}"
+            f"InfluxDBへのイベント書き込み成功: メールアドレス={progress.emailAddress}, イベント={event_type}"
         )
         return True
     except Exception as e:
@@ -198,7 +207,15 @@ def write_event_batch(events: list, measurement: str = "student_progress"):
             point = Point(measurement)
 
             # タグを追加（絞り込み・インデックス用）
-            for tag_key in ["userId", "event", "notebook", "cellType", "sessionId"]:
+            for tag_key in [
+                "emailAddress",
+                "userName",
+                "teamName",
+                "event",
+                "notebook",
+                "cellType",
+                "sessionId",
+            ]:
                 if tag_key in event:
                     point = point.tag(tag_key, str(event[tag_key]))
 
@@ -206,7 +223,9 @@ def write_event_batch(events: list, measurement: str = "student_progress"):
             for field_key, field_value in event.items():
                 # タグ以外のフィールドを追加
                 if field_key not in [
-                    "userId",
+                    "emailAddress",
+                    "userName",
+                    "teamName",
                     "event",
                     "notebook",
                     "cellType",

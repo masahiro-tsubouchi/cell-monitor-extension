@@ -3,9 +3,10 @@ import {
   WebSocketMessage,
   InstructorStatusUpdate,
   StudentHelpRequestEvent,
-  Instructor,
   InstructorStatus
 } from '../types/api';
+import { StudentActivity } from './dashboardAPI';
+import { ENV } from '../config/environment';
 
 export interface WebSocketEventHandlers {
   onInstructorStatusUpdate?: (data: InstructorStatusUpdate) => void;
@@ -15,6 +16,8 @@ export interface WebSocketEventHandlers {
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: any) => void;
+  onStudentProgressUpdate?: (data: StudentActivity) => void;
+  onCellExecution?: (data: any) => void;
 }
 
 class WebSocketService {
@@ -36,7 +39,7 @@ class WebSocketService {
     }
 
     this.token = token;
-    const wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8000';
+    const wsUrl = ENV.wsUrl;
 
     this.socket = io(wsUrl, {
       auth: {
@@ -48,6 +51,70 @@ class WebSocketService {
     });
 
     this.setupSocketEventListeners();
+  }
+
+  // ダッシュボード専用WebSocket接続
+  connectToDashboard(): void {
+    // 既存のWebSocket接続をチェック
+    const existingWs = (this as any).dashboardWs;
+    if (existingWs && existingWs.readyState === WebSocket.OPEN) {
+      console.log('Dashboard WebSocket already connected');
+      return;
+    }
+
+    const wsUrl = ENV.wsUrl;
+    const wsEndpoint = `${wsUrl.replace('http', 'ws')}/api/v1/dashboard/ws/dashboard`;
+
+    console.log('Connecting to dashboard WebSocket:', wsEndpoint);
+
+    try {
+      // WebSocket APIを直接使用（Socket.IOではなく）
+      const dashboardWs = new WebSocket(wsEndpoint);
+
+      dashboardWs.onopen = () => {
+        console.log('✅ Dashboard WebSocket connected successfully');
+        this.eventHandlers.onConnect?.();
+      };
+
+      dashboardWs.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('📊 Dashboard WebSocket message received:', message);
+
+          if (message.type === 'progress_update') {
+            this.eventHandlers.onStudentProgressUpdate?.(message.data);
+          } else if (message.type === 'cell_execution') {
+            this.eventHandlers.onCellExecution?.(message.data);
+          }
+        } catch (error) {
+          console.error('❌ Dashboard WebSocket message parse error:', error);
+        }
+      };
+
+      dashboardWs.onclose = (event) => {
+        console.log('🔌 Dashboard WebSocket disconnected, code:', event.code, 'reason:', event.reason);
+        this.eventHandlers.onDisconnect?.();
+
+        // 自動再接続（5秒後、接続が意図的に閉じられた場合を除く）
+        if (event.code !== 1000) {
+          setTimeout(() => {
+            console.log('🔄 Attempting dashboard WebSocket reconnection...');
+            this.connectToDashboard();
+          }, 5000);
+        }
+      };
+
+      dashboardWs.onerror = (error) => {
+        console.error('❌ Dashboard WebSocket error:', error);
+        this.eventHandlers.onError?.(error);
+      };
+
+      // Dashboard WebSocketをインスタンス変数に保存
+      (this as any).dashboardWs = dashboardWs;
+    } catch (error) {
+      console.error('❌ Failed to create dashboard WebSocket:', error);
+      this.eventHandlers.onError?.(error);
+    }
   }
 
   disconnect(): void {
@@ -108,6 +175,18 @@ class WebSocketService {
     this.socket.on('message', (message: WebSocketMessage) => {
       console.log('WebSocket message received:', message);
       this.handleGenericMessage(message);
+    });
+
+    // セル実行イベント（進捗ダッシュボード用）
+    this.socket.on('cell_execution', (data) => {
+      console.log('Cell execution event received:', data);
+      this.eventHandlers.onCellExecution?.(data);
+    });
+
+    // 学生進捗更新イベント
+    this.socket.on('student_progress_update', (data) => {
+      console.log('Student progress update received:', data);
+      this.eventHandlers.onStudentProgressUpdate?.(data);
     });
   }
 

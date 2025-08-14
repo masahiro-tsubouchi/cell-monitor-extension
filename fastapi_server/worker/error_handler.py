@@ -148,7 +148,7 @@ async def handle_event_error(
         context: エラーコンテキスト情報
     """
     error_type = error.__class__.__name__
-    user_id = event_data.get("userId", "unknown")
+    user_id = event_data.get("emailAddress", "unknown")
     event_type = event_data.get("event", "unknown")
 
     # エラーの重大度を判断

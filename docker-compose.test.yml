@@ -23,14 +23,14 @@ services:
       POSTGRES_PASSWORD: secretpassword
       POSTGRES_DB: progress_db_test
     ports:
-      - "5433:5432" # ホストの5432と競合しないようにポートを変更
+      - "5432:5432" # 本番環境と統一
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6380:6379"
+      - "6379:6379" # 本番環境と統一
 
   influxdb:
     image: influxdb:2.7-alpine
@@ -42,7 +42,7 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=test-bucket
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=test-token
     ports:
-      - "8087:8086"
+      - "8086:8086" # 本番環境と統一
     volumes:
       - influxdb_test_data:/var/lib/influxdb2
 

@@ -18,6 +18,26 @@ import uuid
 
 from db.base import Base
 
+# 教室MAP関連モデルをインポート
+from .models_classroom import ClassroomMap, TeamPosition
+
+
+class Team(Base):
+    """チーム情報"""
+
+    __tablename__ = "teams"
+
+    id = Column(Integer, primary_key=True, index=True)
+    team_name = Column(
+        String, unique=True, index=True, nullable=False
+    )  # チームA, チームB, etc.
+    description = Column(Text, nullable=True)  # チームの説明
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # リレーションシップ
+    students = relationship("Student", back_populates="team")
+
 
 class Student(Base):
     """生徒/ユーザーモデル"""
@@ -25,13 +45,16 @@ class Student(Base):
     __tablename__ = "students"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, unique=True, index=True, nullable=False)
+    email = Column(
+        String, unique=True, index=True, nullable=False
+    )  # メールアドレスを主キーに変更
     name = Column(String, index=True, nullable=True)
-    email = Column(String, unique=True, index=True, nullable=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)  # チーム情報
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # リレーションシップ
+    team = relationship("Team", back_populates="students")
     sessions = relationship("Session", back_populates="student")
     classes = relationship("StudentClass", back_populates="student")
     notebooks = relationship("NotebookAccess", back_populates="student")
@@ -121,6 +144,9 @@ class CellExecution(Base):
     duration = Column(Float, nullable=True)  # 実行時間（秒）
     error_message = Column(Text, nullable=True)
     output = Column(Text, nullable=True)  # JSON形式の出力結果
+    code_content = Column(Text, nullable=True)  # 実行されたセルのコード内容
+    cell_index = Column(Integer, nullable=True)  # ノートブック内でのセル位置
+    cell_type = Column(String, nullable=True)  # セルの種類 (code, markdown, etc.)
 
     # リレーションシップ
     notebook = relationship("Notebook")

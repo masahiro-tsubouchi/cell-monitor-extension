@@ -2,9 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
-import { useAuthStore } from './stores/authStore';
-import { LoginFormContainer } from './components/auth/LoginFormContainer';
-import { DashboardContainerSimple } from './pages/DashboardContainerSimple';
+import { ProgressDashboard } from './pages/ProgressDashboard';
+import { StudentsListPage } from './pages/StudentsListPage';
+import { StudentDetailPage } from './pages/StudentDetailPage';
 import './App.css';
 
 // Material-UI テーマ設定
@@ -55,27 +55,6 @@ const theme = createTheme({
   },
 });
 
-// 認証が必要なルートのプロテクター
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-// パブリックルート（認証済みの場合はダッシュボードにリダイレクト）
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
-
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
 
 function App() {
   return (
@@ -84,25 +63,14 @@ function App() {
       <Router>
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
           <Routes>
-            {/* パブリックルート */}
-            <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <LoginFormContainer />
-                </PublicRoute>
-              }
-            />
+            {/* メインダッシュボード */}
+            <Route path="/dashboard" element={<ProgressDashboard />} />
 
-            {/* プロテクトされたルート */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardContainerSimple />
-                </ProtectedRoute>
-              }
-            />
+            {/* 学生一覧ページ */}
+            <Route path="/dashboard/students" element={<StudentsListPage />} />
+
+            {/* 個別学生詳細ページ */}
+            <Route path="/dashboard/student/:emailAddress" element={<StudentDetailPage />} />
 
             {/* デフォルトルート */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

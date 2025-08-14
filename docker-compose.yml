@@ -1,98 +1,189 @@
 services:
-  # instructor-dashboard:
-  #   build:
-  #     context: ./instructor-dashboard
-  #     dockerfile: Dockerfile.dev
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - REACT_APP_API_BASE_URL=http://localhost:8000/api/v1
-  #     - REACT_APP_WS_URL=ws://localhost:8000
-  #   depends_on:
-  #     - fastapi
-  #   volumes:
-  #     - ./instructor-dashboard:/app
-  #     - /app/node_modules
+  instructor-dashboard:
+    build:
+      context: ./instructor-dashboard
+      dockerfile: Dockerfile.dev
+      args:
+        - NODE_VERSION=${NODE_VERSION:-18-alpine}
+    ports:
+      - "${INSTRUCTOR_DASHBOARD_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-http://localhost:8000/api/v1}
+      - REACT_APP_WS_URL=${REACT_APP_WS_URL:-ws://localhost:8000}
+      - REACT_APP_DEBUG=${REACT_APP_DEBUG:-true}
+    depends_on:
+      - fastapi
+    volumes:
+      - ./instructor-dashboard:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
 
   jupyterlab:
     build:
       context: ./cell-monitor-extension
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
+        - NODE_MAJOR_VERSION=${NODE_MAJOR_VERSION:-20}
+        - JUPYTERLAB_PORT=${JUPYTERLAB_PORT:-8888}
+        - JUPYTER_TOKEN=${JUPYTER_TOKEN:-easy}
     ports:
-      - "8888:8888"
+      - "${JUPYTERLAB_PORT:-8888}:8888"
     volumes:
       - ./notebooks:/notebooks
     environment:
-      - JUPYTER_TOKEN=easy
-      - CELL_MONITOR_TEST_MODE=true  # 簡単なアクセストークン。本番環境では変更してください
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN}
+      - CELL_MONITOR_TEST_MODE=${CELL_MONITOR_TEST_MODE:-true}
+      - CELL_MONITOR_SERVER_URL=${CELL_MONITOR_SERVER_URL:-http://fastapi:8000/api/v1/events}
+      - NODE_ENV=${NODE_ENV:-development}
     depends_on:
       - fastapi
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${JUPYTERLAB_PORT:-8888}/lab"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
 
   fastapi:
     build:
       context: ./fastapi_server
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
+        - FASTAPI_PORT=${FASTAPI_PORT:-8000}
     ports:
-      - "8000:8000"
+      - "${FASTAPI_PORT:-8000}:8000"
     volumes:
       - ./fastapi_server:/app
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PROJECT_NAME=${PROJECT_NAME:-Student Progress Tracker API}
+      - PROJECT_VERSION=${PROJECT_VERSION:-1.0.0}
+      - API_V1_STR=${API_V1_STR:-/api/v1}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-*}
+      - POSTGRES_USER=${POSTGRES_USER:-admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-secretpassword}
+      - POSTGRES_SERVER=${POSTGRES_SERVER:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-progress_db}
+      - INFLUXDB_SERVER=${INFLUXDB_SERVER:-http://influxdb}
+      - INFLUXDB_PORT=${INFLUXDB_PORT:-8086}
+      - INFLUXDB_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN:-my-super-secret-token}
+      - INFLUXDB_ORG=${INFLUXDB_INIT_ORG:-my-org}
+      - INFLUXDB_BUCKET=${INFLUXDB_INIT_BUCKET:-progress_bucket}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here-change-in-production}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-true}
     depends_on:
-      - postgres
-      - redis
-      - influxdb
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${FASTAPI_PORT:-8000}/health"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
 
   worker:
     build:
       context: ./fastapi_server
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
+        - FASTAPI_PORT=${FASTAPI_PORT:-8000}
     command: python -u worker/main.py
     volumes:
       - ./fastapi_server:/app
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - POSTGRES_USER=${POSTGRES_USER:-admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-secretpassword}
+      - POSTGRES_SERVER=${POSTGRES_SERVER:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-progress_db}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-true}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:${POSTGRES_VERSION:-16-alpine}
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secretpassword
-      POSTGRES_DB: progress_db
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secretpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-progress_db}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-progress_db}"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
 
   influxdb:
-    image: influxdb:2.7
+    image: influxdb:${INFLUXDB_VERSION:-2.7}
     environment:
       DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: secretpassword
-      DOCKER_INFLUXDB_INIT_ORG: my-org
-      DOCKER_INFLUXDB_INIT_BUCKET: progress_bucket
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-secret-token
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_INIT_USERNAME:-admin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_INIT_PASSWORD:-secretpassword}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_INIT_ORG:-my-org}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_INIT_BUCKET:-progress_bucket}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_INIT_ADMIN_TOKEN:-my-super-secret-token}
     ports:
-      - "8086:8086"
+      - "${INFLUXDB_PORT:-8086}:8086"
     volumes:
       - influxdb_data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
 
   redis:
-    image: redis:7-alpine
+    image: redis:${REDIS_VERSION:-7-alpine}
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
 
   # --- 配布用パッケージビルド専用サービス ---
-  extension-builder:
-    build:
-      context: ./cell-monitor-extension
-      dockerfile: Dockerfile.build
-    volumes:
-      # ビルド成果物(.whl)をホストに反映させるためにマウント
-      - ./cell-monitor-extension:/app
-    environment:
-      # 生成されるファイルの所有者をホストユーザーに合わせる
-      - HOST_UID=${HOST_UID:-1000}
-      - HOST_GID=${HOST_GID:-1000}
+  # extension-builder:
+  #   build:
+  #     context: ./cell-monitor-extension
+  #     dockerfile: Dockerfile.build
+  #     args:
+  #       - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
+  #       - NODE_MAJOR_VERSION=${NODE_MAJOR_VERSION:-20}
+  #       - JUPYTERLAB_VERSION=${JUPYTERLAB_VERSION:-4.0}
+    # volumes:
+    #   # ビルド成果物(.whl)をホストに反映させるためにマウント
+    #   - ./cell-monitor-extension:/app
+    # environment:
+    #   # 生成されるファイルの所有者をホストユーザーに合わせる
+    #   - HOST_UID=${HOST_UID:-1000}
+    #   - HOST_GID=${HOST_GID:-1000}
+    #   - NODE_ENV=${NODE_ENV:-development}
 
 volumes:
   postgres_data:

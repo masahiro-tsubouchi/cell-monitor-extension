@@ -1,25 +1,43 @@
-# Use the same official Python runtime as the main Dockerfile
-FROM python:3.12-slim
+# 環境変数でPythonバージョンを指定可能
+ARG PYTHON_VERSION=3.12-slim
+FROM python:${PYTHON_VERSION}
 
-# Set the working directory in the container
+# 作業ディレクトリの設定
 WORKDIR /app
 
-# Install system dependencies, including Node.js 20.x, matching the main Dockerfile
+# 環境変数でNodeバージョンを指定可能
+ARG NODE_MAJOR_VERSION=20
+
+# システム依存関係のインストール（Node.js、npm、curl、git）
 RUN apt-get update && apt-get upgrade -y && apt-get install -y curl git && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR_VERSION}.x | bash - && \
     apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Enable corepack to manage yarn, matching the main Dockerfile
+# corepackを有効化してyarnを管理
 RUN corepack enable
 
-# Install Python build tools
-RUN pip install --no-cache-dir --upgrade pip build jupyterlab~=4.0 wheel twine
+# Python環境の最適化
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Copy the extension source code into the container
-COPY . .
+# 環境変数でJupyterLabバージョンを指定可能
+ARG JUPYTERLAB_VERSION=4.0
 
-# Set the default command to run the entire build process.
-# This will be executed when 'docker compose run' is called.
+# Pythonビルドツールのインストール
+RUN pip install --no-cache-dir --upgrade pip build jupyterlab~=${JUPYTERLAB_VERSION} wheel twine
+
+# 非rootユーザーでの実行（セキュリティ強化）
+RUN useradd --create-home --shell /bin/bash builder && \
+    chown -R builder:builder /app
+USER builder
+
+# 拡張機能ソースコードのコピー
+COPY --chown=builder:builder . .
+
+# ビルドプロセスの実行コマンド
+# docker compose runで実行される全体ビルドプロセス
 CMD ["sh", "-c", "jlpm install && jlpm build && python -m build && chown -R ${HOST_UID:-1000}:${HOST_GID:-1000} /app/dist /app/pyproject.toml /app/lib"]

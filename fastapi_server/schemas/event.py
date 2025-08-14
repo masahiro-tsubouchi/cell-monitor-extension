@@ -11,8 +11,9 @@ class EventData(BaseModel):
     eventId: Optional[str] = None
     eventType: Optional[str] = None
     eventTime: Optional[str] = None
-    userId: Optional[str] = None
+    emailAddress: Optional[str] = None  # メールアドレス（ユーザー識別子）
     userName: Optional[str] = None
+    teamName: Optional[str] = None  # チーム名
     sessionId: Optional[str] = None
     notebookPath: Optional[str] = None
     cellId: Optional[str] = None

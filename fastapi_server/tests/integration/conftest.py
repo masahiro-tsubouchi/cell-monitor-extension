@@ -6,11 +6,12 @@ import pytest
 import time
 import asyncio
 import requests
+import os
 
-# テスト用の設定
-JUPYTER_URL = "http://localhost:8888"
-FASTAPI_URL = "http://localhost:8000"
-HEALTH_CHECK_TIMEOUT = 60  # 秒
+# テスト用の設定（環境変数から取得）
+JUPYTER_URL = os.environ.get("JUPYTER_URL", "http://localhost:8888")
+FASTAPI_URL = os.environ.get("FASTAPI_URL", "http://localhost:8000")
+HEALTH_CHECK_TIMEOUT = int(os.environ.get("HEALTH_CHECK_TIMEOUT", "60"))  # 秒
 
 
 def wait_for_service(url: str, timeout: int = HEALTH_CHECK_TIMEOUT) -> bool:

@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
-from db.redis_client import get_redis_client, NOTIFICATION_CHANNEL
+from db.redis_client import get_redis_client, PROGRESS_CHANNEL
 from schemas.event import EventData
 
 router = APIRouter()
@@ -96,7 +96,7 @@ async def _publish_events_batch(redis_client, events: List[EventData]):
         for event in chunk:
             # JSON圧縮とデータ最適化
             event_data = event.model_dump_json()  # JSON出力（Pydantic v2対応）
-            pipe.publish(NOTIFICATION_CHANNEL, event_data)
+            pipe.publish(PROGRESS_CHANNEL, event_data)
 
         # パイプライン実行
         await pipe.execute()
