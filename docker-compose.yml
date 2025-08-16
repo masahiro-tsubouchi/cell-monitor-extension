@@ -89,10 +89,11 @@ services:
       influxdb:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${FASTAPI_PORT:-8000}/health"]
+      test: ["CMD", "python", "-c", "import requests; r = requests.get('http://localhost:8000/api/v1/health', timeout=5); exit(0) if r.status_code == 200 else exit(1)"]
       interval: ${HEALTH_CHECK_INTERVAL:-30s}
       timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
       retries: ${HEALTH_CHECK_RETRIES:-3}
+      start_period: 60s
 
   worker:
     build:
@@ -119,6 +120,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      fastapi:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; r = redis.Redis(host='redis', port=6379); print('Worker health check'); exit(0) if r.ping() else exit(1)"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
+      start_period: 60s
 
   postgres:
     image: postgres:${POSTGRES_VERSION:-16-alpine}

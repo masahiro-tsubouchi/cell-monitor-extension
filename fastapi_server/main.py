@@ -57,12 +57,32 @@ async def lifespan(app: FastAPI):
     # Redis購読タスクの作成と開始
     redis_subscriber_task = asyncio.create_task(redis_subscriber())
     print("Redis subscriber task started")
+    
+    # WebSocketクリーンアップサービスの開始
+    from core.websocket_cleanup import start_websocket_cleanup
+    await start_websocket_cleanup()
+    print("WebSocket cleanup service started")
+    
+    # リアルタイム通知システムの開始
+    from core.realtime_notifier import initialize_realtime_notifier
+    await initialize_realtime_notifier()
+    print("Realtime notifier service started")
 
     # アプリケーションの実行中はここでyield
     yield
 
     # アプリケーション終了時の処理
     print("Shutting down application...")
+
+    # リアルタイム通知システムの停止
+    from core.realtime_notifier import shutdown_realtime_notifier
+    await shutdown_realtime_notifier()
+    print("Realtime notifier service stopped")
+    
+    # WebSocketクリーンアップサービスの停止
+    from core.websocket_cleanup import stop_websocket_cleanup
+    await stop_websocket_cleanup()
+    print("WebSocket cleanup service stopped")
 
     # Redis購読タスクのクリーンアップ
     print("Cancelling Redis subscriber task...")

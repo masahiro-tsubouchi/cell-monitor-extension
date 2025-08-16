@@ -13,6 +13,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# システムパッケージのインストール（curlはヘルスチェック用）
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # 依存関係のコピーとインストール（Docker層キャッシュの活用）
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -38,8 +43,8 @@ ARG FASTAPI_PORT=8000
 EXPOSE ${FASTAPI_PORT}
 
 # ヘルスチェック設定
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${FASTAPI_PORT}/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import requests; r = requests.get('http://localhost:8000/api/v1/health', timeout=5); exit(0) if r.status_code == 200 else exit(1)"
 
 # FastAPI本番サーバーの起動
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -19,6 +19,7 @@ from api.endpoints import (
     dashboard,
     dashboard_websocket,
     classroom,
+    health,
 )
 
 api_router = APIRouter()
@@ -56,3 +57,4 @@ api_router.include_router(
     dashboard_websocket.router, prefix="/dashboard", tags=["dashboard_websocket"]
 )
 api_router.include_router(classroom.router, prefix="/classroom", tags=["classroom"])
+api_router.include_router(health.router, prefix="", tags=["health"])
