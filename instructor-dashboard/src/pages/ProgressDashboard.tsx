@@ -18,7 +18,9 @@ import {
   AutoMode as AutoIcon,
   List as ListIcon,
   ViewModule as GridIcon,
-  Group as TeamIcon
+  Group as TeamIcon,
+  Speed as OptimizeIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useProgressDashboardStore } from '../stores/progressDashboardStore';
 import { StudentProgressGrid } from '../components/progress/StudentProgressGrid';
@@ -27,7 +29,6 @@ import { TeamMapView } from '../components/progress/TeamMapView';
 import { MetricsPanel } from '../components/progress/MetricsPanel';
 import { ActivityChart } from '../components/progress/ActivityChart';
 import { StudentDetailModal } from '../components/progress/StudentDetailModal';
-import { CompressionStatsPanel } from '../components/progress/CompressionStatsPanel';
 import { StudentActivity } from '../services/dashboardAPI';
 import webSocketService from '../services/websocket';
 import { useNavigate } from 'react-router-dom';
@@ -244,6 +245,15 @@ export const ProgressDashboard: React.FC = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<OptimizeIcon />}
+              onClick={() => navigate('/dashboard/optimized')}
+              sx={{ fontWeight: 'bold' }}
+              color="success"
+            >
+              最適化版を試す
+            </Button>
             <FormControlLabel
               control={
                 <Switch
@@ -255,6 +265,17 @@ export const ProgressDashboard: React.FC = () => {
               }
               label="自動更新"
             />
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/admin')}
+              sx={{ 
+                minWidth: 'auto',
+                padding: '8px 12px'
+              }}
+              size="small"
+            >
+              <SettingsIcon sx={{ fontSize: '1.5rem' }} />
+            </Button>
           </Box>
         </Box>
       </Box>
@@ -290,8 +311,6 @@ export const ProgressDashboard: React.FC = () => {
         teams={Array.from(new Set(students.map(s => s.teamName).filter((name): name is string => Boolean(name))))}
       />
 
-      {/* Step 2A: 差分更新統計パネル */}
-      <CompressionStatsPanel />
 
       {/* 受講生進捗表示 */}
       <Box sx={{ mb: 4 }}>

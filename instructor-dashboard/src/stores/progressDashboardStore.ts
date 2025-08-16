@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { dashboardAPI, StudentActivity, DashboardMetrics, ActivityTimePoint } from '../services/dashboardAPI';
 import { getInstructorSettings } from '../utils/instructorStorage';
 import { deltaCalculator, deltaApplicator, DeltaPackage, DeltaUpdate } from '../utils/deltaCalculator';
-import { performanceMonitor, LoadComparison, withPerformanceTracking } from '../utils/performanceMonitor';
+import { performanceMonitor, LoadComparison, withPerformanceTracking, withSyncPerformanceTracking } from '../utils/performanceMonitor';
 
 interface ProgressDashboardState {
   // Data
@@ -303,11 +303,11 @@ export const useProgressDashboardStore = create<ProgressDashboardState>((set, ge
     try {
       // パフォーマンス監視中の場合、差分更新を記録
       if (currentState.performanceMonitoring) {
-        performanceMonitor.recordDeltaUpdate(deltaPackage, currentState.students.length);
+        performanceMonitor.recordDeltaUpdate([deltaPackage]);
       }
 
       // 差分を現在のデータに適用
-      const updatedStudents = withPerformanceTracking(
+      const updatedStudents = withSyncPerformanceTracking(
         () => deltaApplicator.applyDeltas(currentState.students, deltaPackage),
         'Delta Application'
       );
@@ -431,21 +431,21 @@ ${realTimeStats ? `
 ## Before/After比較
 ${comparison ? `
 ### 負荷軽減効果
-- データサイズ削減: ${comparison.improvements.dataSizeReduction.toFixed(1)}%
-- 処理速度向上: ${comparison.improvements.processingSpeedup.toFixed(1)}%
-- メモリ使用量削減: ${comparison.improvements.memoryReduction.toFixed(1)}%
-- 帯域幅削減量: ${(comparison.improvements.bandwidthSavings / 1024).toFixed(2)}KB/分
+- データサイズ削減: ${comparison.improvements?.dataSizeReduction?.toFixed(1) || 0}%
+- 処理速度向上: ${comparison.improvements?.processingSpeedup?.toFixed(1) || 0}%
+- メモリ使用量削減: ${comparison.improvements?.memoryReduction?.toFixed(1) || 0}%
+- 帯域幅削減量: ${((comparison.improvements?.bandwidthSavings || 0) / 1024).toFixed(2)}KB/分
 
 ### フル更新 (Before)
-- 平均データサイズ: ${(comparison.fullUpdateMetrics.dataSize / 1024).toFixed(2)}KB
-- 平均処理時間: ${comparison.fullUpdateMetrics.processingTime.toFixed(2)}ms
-- メモリ使用量: ${(comparison.fullUpdateMetrics.memoryUsage / 1024).toFixed(2)}KB
+- 平均データサイズ: ${((comparison.fullUpdateMetrics?.dataSize || 0) / 1024).toFixed(2)}KB
+- 平均処理時間: ${comparison.fullUpdateMetrics?.processingTime?.toFixed(2) || 0}ms
+- メモリ使用量: ${((comparison.fullUpdateMetrics?.memoryUsage || 0) / 1024).toFixed(2)}KB
 
 ### 差分更新 (After) 
-- 平均データサイズ: ${(comparison.deltaUpdateMetrics.dataSize / 1024).toFixed(2)}KB
-- 平均処理時間: ${comparison.deltaUpdateMetrics.processingTime.toFixed(2)}ms
-- メモリ使用量: ${(comparison.deltaUpdateMetrics.memoryUsage / 1024).toFixed(2)}KB
-- 圧縮率: ${(comparison.deltaUpdateMetrics.compressionRatio * 100).toFixed(1)}%
+- 平均データサイズ: ${((comparison.deltaUpdateMetrics?.dataSize || 0) / 1024).toFixed(2)}KB
+- 平均処理時間: ${comparison.deltaUpdateMetrics?.processingTime?.toFixed(2) || 0}ms
+- メモリ使用量: ${((comparison.deltaUpdateMetrics?.memoryUsage || 0) / 1024).toFixed(2)}KB
+- 圧縮率: ${((comparison.deltaUpdateMetrics?.compressionRatio || 0) * 100).toFixed(1)}%
 ` : '比較データなし'}
 
 ## CSV生データ
