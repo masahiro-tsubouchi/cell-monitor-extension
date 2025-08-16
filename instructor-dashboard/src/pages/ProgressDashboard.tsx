@@ -38,11 +38,12 @@ import {
   updateAutoRefresh,
   updateSelectedStudent
 } from '../utils/instructorStorage';
+import { DashboardViewMode, convertLegacyViewMode } from '../types/dashboard';
 
 export const ProgressDashboard: React.FC = () => {
   const navigate = useNavigate();
 
-  // 講師別設定を初期化
+  // 講師別設定を初期化（レガシー互換）
   const [viewMode, setViewMode] = React.useState<'grid' | 'team'>(() => {
     const settings = getInstructorSettings();
     return settings.viewMode;

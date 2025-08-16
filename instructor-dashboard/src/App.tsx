@@ -91,9 +91,19 @@ function App() {
           <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             <ErrorBoundary>
               <Routes>
-                {/* メインダッシュボード */}
+                {/* 従来版ダッシュボード（レガシー） */}
                 <Route 
                   path="/dashboard" 
+                  element={
+                    <ErrorBoundary>
+                      <ProgressDashboard />
+                    </ErrorBoundary>
+                  } 
+                />
+
+                {/* レガシー版への明示的アクセス */}
+                <Route 
+                  path="/dashboard/legacy" 
                   element={
                     <ErrorBoundary>
                       <ProgressDashboard />
@@ -141,11 +151,11 @@ function App() {
                   } 
                 />
 
-                {/* デフォルトルート */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                {/* デフォルトルート - 最適化版をデフォルトに変更 */}
+                <Route path="/" element={<Navigate to="/dashboard/optimized" replace />} />
 
-                {/* 404ページ */}
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                {/* 404ページ - 最適化版へリダイレクト */}
+                <Route path="*" element={<Navigate to="/dashboard/optimized" replace />} />
               </Routes>
             </ErrorBoundary>
           </Box>

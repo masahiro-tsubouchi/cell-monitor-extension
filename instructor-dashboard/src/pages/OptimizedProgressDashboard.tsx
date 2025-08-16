@@ -31,6 +31,7 @@ import { useProgressDashboardStore } from '../stores/progressDashboardStore';
 import { useOptimizedStudentList } from '../hooks/useOptimizedStudentList';
 import { useWorkerProcessing } from '../hooks/useWorkerProcessing';
 import { OptimizedStudentCard } from '../components/optimized/OptimizedStudentCard';
+import { OptimizedTeamGrid } from '../components/optimized/OptimizedTeamGrid';
 import { VirtualizedStudentList } from '../components/virtualized/VirtualizedStudentList';
 import {
   OptimizedActivityChart,
@@ -49,6 +50,8 @@ import {
   updateAutoRefresh,
   updateSelectedStudent
 } from '../utils/instructorStorage';
+import { DashboardViewMode, getViewModeLabel } from '../types/dashboard';
+import { useDashboardLogic } from '../hooks/useDashboardLogic';
 
 // メモ化されたヘッダーコンポーネント
 const DashboardHeader = memo<{
@@ -114,9 +117,9 @@ DashboardHeader.displayName = 'DashboardHeader';
 
 // メモ化されたビューモードコントロール
 const ViewModeControls = memo<{
-  viewMode: 'grid' | 'team' | 'virtualized';
+  viewMode: DashboardViewMode;
   studentsCount: number;
-  onViewModeChange: (mode: 'grid' | 'team' | 'virtualized') => void;
+  onViewModeChange: (mode: DashboardViewMode) => void;
   onViewStudentsList: () => void;
 }>(({ viewMode, studentsCount, onViewModeChange, onViewStudentsList }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -137,7 +140,7 @@ const ViewModeControls = memo<{
         </ToggleButton>
         <ToggleButton value="grid">
           <GridIcon sx={{ mr: 1 }} />
-          グリッド表示
+          チームグリッド
         </ToggleButton>
         <ToggleButton value="virtualized">
           <ListIcon sx={{ mr: 1 }} />
@@ -159,14 +162,7 @@ const ViewModeControls = memo<{
 
 ViewModeControls.displayName = 'ViewModeControls';
 
-function getViewModeLabel(mode: string): string {
-  switch (mode) {
-    case 'team': return 'チーム別表示';
-    case 'grid': return 'グリッド表示（最大12名）';
-    case 'virtualized': return '仮想スクロール（全員表示）';
-    default: return '';
-  }
-}
+// getViewModeLabel関数は../types/dashboardからインポート済み
 
 // メモ化されたパフォーマンス統計表示
 const PerformanceStats = memo<{
@@ -196,7 +192,7 @@ export const OptimizedProgressDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   // 講師別設定を初期化
-  const [viewMode, setViewMode] = useState<'grid' | 'team' | 'virtualized'>(() => {
+  const [viewMode, setViewMode] = useState<DashboardViewMode>(() => {
     const settings = getInstructorSettings();
     return settings.viewMode === 'grid' ? 'grid' : 'team';
   });
@@ -228,7 +224,8 @@ export const OptimizedProgressDashboard: React.FC = () => {
   // 最適化された学生データ
   const optimizedStudentData = useOptimizedStudentList(students);
 
-  // WebSocket関連の処理は既存と同じ
+  // 共通ダッシュボードロジック
+  const dashboardLogic = useDashboardLogic();
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // コンポーネントマウント時にデータ読み込み
@@ -236,92 +233,29 @@ export const OptimizedProgressDashboard: React.FC = () => {
     refreshData();
   }, [refreshData]);
 
-  // ユーザーインタラクション検出
+  // ユーザーインタラクション検出（共通ロジック使用）
   useEffect(() => {
-    const handleUserInteraction = () => {
-      markUserActive();
-    };
+    return dashboardLogic.setupUserInteractionDetection(markUserActive);
+  }, [dashboardLogic, markUserActive]);
 
-    const events = ['mousedown', 'mouseup', 'scroll', 'keydown', 'touchstart'];
-    
-    events.forEach(eventName => {
-      window.addEventListener(eventName, handleUserInteraction, { passive: true });
-    });
-
-    return () => {
-      events.forEach(eventName => {
-        window.removeEventListener(eventName, handleUserInteraction);
-      });
-    };
-  }, [markUserActive]);
-
-  // WebSocketイベントハンドラー設定（既存と同じ）
+  // WebSocketイベントハンドラー設定（共通ロジック使用）
   useEffect(() => {
-    const eventHandlers = {
-      onConnect: () => console.log('Progress dashboard WebSocket connected'),
-      onDisconnect: () => console.log('Progress dashboard WebSocket disconnected'),
-      onStudentProgressUpdate: (data: StudentActivity) => {
-        updateStudentStatus(data.emailAddress, {
-          userName: data.userName,
-          currentNotebook: data.currentNotebook,
-          lastActivity: data.lastActivity,
-          status: data.status,
-          cellExecutions: (data.cellExecutions || 1),
-          errorCount: data.errorCount
-        });
-      },
-      onCellExecution: (data: any) => {
-        updateStudentStatus(data.emailAddress, {
-          cellExecutions: (data.cellExecutions || 1),
-          lastActivity: '今',
-          status: 'active' as const
-        });
-      },
-      onHelpRequest: (data: any) => {
-        updateStudentStatus(data.emailAddress, {
-          isRequestingHelp: true,
-          lastActivity: '今',
-          status: 'help' as any
-        });
-        setTimeout(() => refreshData(), 100);
-      },
-      onHelpResolved: (data: any) => {
-        updateStudentStatus(data.emailAddress, {
-          isRequestingHelp: false,
-          lastActivity: '今'
-        });
-        setTimeout(() => refreshData(), 100);
-      },
-      onError: (error: any) => console.error('Progress dashboard WebSocket error:', error)
-    };
+    const eventHandlers = dashboardLogic.setupWebSocketHandlers(
+      updateStudentStatus,
+      refreshData
+    );
+    return dashboardLogic.initializeWebSocket(eventHandlers);
+  }, [dashboardLogic, updateStudentStatus, refreshData]);
 
-    webSocketService.setEventHandlers(eventHandlers);
-    webSocketService.connectToDashboard();
-
-    return () => {
-      webSocketService.setEventHandlers({});
-    };
-  }, []);
-
-  // 自動リフレッシュ設定
+  // 自動リフレッシュ設定（共通ロジック使用）
   useEffect(() => {
-    if (autoRefresh) {
-      const updateInterval = expandedTeamsCount > 0 ? 5000 : 15000;
-
-      refreshIntervalRef.current = setInterval(() => {
-        refreshData();
-      }, updateInterval);
-    } else if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
-      refreshIntervalRef.current = null;
-    }
-
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
-    };
-  }, [autoRefresh, expandedTeamsCount, refreshData]);
+    return dashboardLogic.setupAutoRefresh(
+      autoRefresh,
+      expandedTeamsCount,
+      refreshData,
+      refreshIntervalRef
+    );
+  }, [dashboardLogic, autoRefresh, expandedTeamsCount, refreshData]);
 
   // イベントハンドラー（メモ化）
   const handleStudentClick = useCallback((student: StudentActivity) => {
@@ -344,7 +278,7 @@ export const OptimizedProgressDashboard: React.FC = () => {
     navigate('/dashboard/students');
   }, [navigate]);
 
-  const handleViewModeChange = useCallback((newViewMode: 'grid' | 'team' | 'virtualized') => {
+  const handleViewModeChange = useCallback((newViewMode: DashboardViewMode) => {
     setViewMode(newViewMode);
     updateViewMode(newViewMode as any);
   }, []);
@@ -452,20 +386,12 @@ export const OptimizedProgressDashboard: React.FC = () => {
             />
           </VisibilityBasedLoader>
         ) : (
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-            gap: 2 
-          }}>
-            {displayStudents.map((studentData) => (
-              <OptimizedStudentCard
-                key={studentData.id}
-                studentData={studentData}
-                onClick={handleStudentClick}
-                showTeam={true}
-              />
-            ))}
-          </Box>
+          <OptimizedTeamGrid
+            students={students}
+            onStudentClick={handleStudentClick}
+            onExpandedTeamsChange={setExpandedTeamsCount}
+            maxTeamsToShow={8}
+          />
         )}
       </Box>
 
