@@ -310,6 +310,269 @@ async def handle_notebook_save(event_data: Dict[str, Any], db: Session):
         raise
 
 
+# 進捗更新イベントのハンドラー
+@with_retry
+async def handle_progress_update(event_data: Dict[str, Any], db: Session):
+    """
+    進捗更新イベントの処理
+
+    Args:
+        event_data: イベントデータを含む辞書
+        db: SQLAlchemy DBセッション
+    """
+    logger.info(f"進捗更新イベントを処理中: {event_data.get('emailAddress', 'unknown')}")
+
+    try:
+        event = EventData.model_validate(event_data)
+
+        if not event.emailAddress:
+            logger.error("emailAddressがありません。進捗更新ハンドラーをスキップします。")
+            return False
+
+        # ユーザー情報をPostgreSQLに保存/取得
+        student = crud_student.get_or_create_student(
+            db, email=event.emailAddress, name=event.userName, team_name=event.teamName
+        )
+        logger.info(f"PostgreSQL処理完了: メールアドレス {student.email}")
+
+        # 時系列データをInfluxDBに書き込み
+        write_progress_event(event)
+        logger.info(f"InfluxDB書き込み完了: 進捗更新 {event.emailAddress}")
+        return True
+    except Exception as e:
+        logger.error(f"進捗更新処理中にエラー: {e}")
+        await handle_event_error(
+            error=e, event_data=event_data, context={"method": "handle_progress_update"}
+        )
+        raise
+
+
+# エラー発生イベントのハンドラー
+@with_retry
+async def handle_error_occurred(event_data: Dict[str, Any], db: Session):
+    """
+    エラー発生イベントの処理
+
+    Args:
+        event_data: イベントデータを含む辞書
+        db: SQLAlchemy DBセッション
+    """
+    logger.info(f"エラー発生イベントを処理中: {event_data.get('emailAddress', 'unknown')}")
+
+    try:
+        event = EventData.model_validate(event_data)
+
+        if not event.emailAddress:
+            logger.error("emailAddressがありません。エラー発生ハンドラーをスキップします。")
+            return False
+
+        # ユーザー情報をPostgreSQLに保存/取得
+        student = crud_student.get_or_create_student(
+            db, email=event.emailAddress, name=event.userName, team_name=event.teamName
+        )
+        logger.info(f"PostgreSQL処理完了: メールアドレス {student.email}")
+
+        # 時系列データをInfluxDBに書き込み（エラーフラグ付き）
+        write_progress_event(event)
+        logger.info(f"InfluxDB書き込み完了: エラーイベント {event.emailAddress}")
+
+        # エラー専用の処理（アラート送信など）
+        await _handle_error_alert(event, student)
+        
+        return True
+    except Exception as e:
+        logger.error(f"エラー発生処理中にエラー: {e}")
+        await handle_event_error(
+            error=e, event_data=event_data, context={"method": "handle_error_occurred"}
+        )
+        raise
+
+
+async def _handle_error_alert(event: EventData, student):
+    """エラーアラート処理"""
+    try:
+        from db.redis_client import get_redis_client
+        import json
+
+        # エラーアラートデータを作成
+        error_alert = {
+            "type": "error_alert",
+            "emailAddress": event.emailAddress,
+            "userName": student.name or event.userName or event.emailAddress,
+            "teamName": event.teamName,
+            "notebookPath": event.notebookPath,
+            "cellId": event.cellId,
+            "errorMessage": getattr(event, 'errorMessage', 'Unknown error'),
+            "timestamp": event.eventTime,
+            "severity": "high"
+        }
+
+        # Redis Pub/Sub経由でダッシュボードに緊急通知
+        redis_client = await get_redis_client()
+        await redis_client.publish("error_alerts", json.dumps(error_alert))
+        logger.info(f"エラーアラート送信: {event.emailAddress}")
+
+    except Exception as e:
+        logger.error(f"エラーアラート送信エラー: {e}")
+        # エラーがあってもメイン処理は継続
+
+
+# ノートブック開始イベントのハンドラー
+@with_retry
+async def handle_notebook_opened(event_data: Dict[str, Any], db: Session):
+    """
+    ノートブック開始イベントの処理
+
+    Args:
+        event_data: イベントデータを含む辞書
+        db: SQLAlchemy DBセッション
+    """
+    logger.info(f"ノートブック開始イベントを処理中: {event_data.get('notebookPath', 'unknown')}")
+
+    try:
+        event = EventData.model_validate(event_data)
+
+        if not event.emailAddress:
+            logger.error("emailAddressがありません。ノートブック開始ハンドラーをスキップします。")
+            return False
+
+        # ユーザー情報をPostgreSQLに保存/取得
+        student = crud_student.get_or_create_student(
+            db, email=event.emailAddress, name=event.userName, team_name=event.teamName
+        )
+        logger.info(f"PostgreSQL処理完了: メールアドレス {student.email}")
+
+        # セッション開始処理（アクティブセッション作成）
+        session = crud_student.get_or_create_active_session(db, student_id=student.id)
+        logger.info(f"アクティブセッション作成: session_id={session.id}")
+
+        # 時系列データをInfluxDBに書き込み
+        write_progress_event(event)
+        logger.info(f"InfluxDB書き込み完了: ノートブック開始 {event.notebookPath}")
+        return True
+    except Exception as e:
+        logger.error(f"ノートブック開始処理中にエラー: {e}")
+        await handle_event_error(
+            error=e, event_data=event_data, context={"method": "handle_notebook_opened"}
+        )
+        raise
+
+
+# ヘルプ要求イベントのハンドラー
+@with_retry
+async def handle_help_request(event_data: Dict[str, Any], db: Session):
+    """
+    ヘルプ要求イベントの処理
+
+    Args:
+        event_data: イベントデータを含む辞書
+        db: SQLAlchemy DBセッション
+    """
+    logger.info(f"ヘルプ要求イベントを処理中: {event_data.get('emailAddress', 'unknown')}")
+
+    try:
+        event = EventData.model_validate(event_data)
+
+        if not event.emailAddress:
+            logger.error("emailAddressがありません。ヘルプ要求ハンドラーをスキップします。")
+            return False
+
+        # ユーザー情報をPostgreSQLに保存/取得
+        student = crud_student.get_or_create_student(
+            db, email=event.emailAddress, name=event.userName, team_name=event.teamName
+        )
+        logger.info(f"PostgreSQL処理完了: メールアドレス {student.email}")
+
+        # ヘルプ要求フラグ設定
+        crud_student.set_help_request_status(db, student_id=student.id, is_requesting=True)
+        logger.info(f"ヘルプ要求フラグ設定: {event.emailAddress}")
+
+        # 時系列データをInfluxDBに書き込み
+        write_progress_event(event)
+        logger.info(f"InfluxDB書き込み完了: ヘルプ要求 {event.emailAddress}")
+
+        # 緊急通知を送信
+        await _handle_help_alert(event, student)
+        
+        return True
+    except Exception as e:
+        logger.error(f"ヘルプ要求処理中にエラー: {e}")
+        await handle_event_error(
+            error=e, event_data=event_data, context={"method": "handle_help_request"}
+        )
+        raise
+
+
+# ヘルプ停止イベントのハンドラー
+@with_retry
+async def handle_help_stop(event_data: Dict[str, Any], db: Session):
+    """
+    ヘルプ停止イベントの処理
+
+    Args:
+        event_data: イベントデータを含む辞書
+        db: SQLAlchemy DBセッション
+    """
+    logger.info(f"ヘルプ停止イベントを処理中: {event_data.get('emailAddress', 'unknown')}")
+
+    try:
+        event = EventData.model_validate(event_data)
+
+        if not event.emailAddress:
+            logger.error("emailAddressがありません。ヘルプ停止ハンドラーをスキップします。")
+            return False
+
+        # ユーザー情報をPostgreSQLに保存/取得
+        student = crud_student.get_or_create_student(
+            db, email=event.emailAddress, name=event.userName, team_name=event.teamName
+        )
+        logger.info(f"PostgreSQL処理完了: メールアドレス {student.email}")
+
+        # ヘルプ要求フラグ解除
+        crud_student.set_help_request_status(db, student_id=student.id, is_requesting=False)
+        logger.info(f"ヘルプ要求フラグ解除: {event.emailAddress}")
+
+        # 時系列データをInfluxDBに書き込み
+        write_progress_event(event)
+        logger.info(f"InfluxDB書き込み完了: ヘルプ停止 {event.emailAddress}")
+        
+        return True
+    except Exception as e:
+        logger.error(f"ヘルプ停止処理中にエラー: {e}")
+        await handle_event_error(
+            error=e, event_data=event_data, context={"method": "handle_help_stop"}
+        )
+        raise
+
+
+async def _handle_help_alert(event: EventData, student):
+    """ヘルプアラート処理"""
+    try:
+        from db.redis_client import get_redis_client
+        import json
+
+        # ヘルプアラートデータを作成
+        help_alert = {
+            "type": "help_request",
+            "emailAddress": event.emailAddress,
+            "userName": student.name or event.userName or event.emailAddress,
+            "teamName": event.teamName,
+            "notebookPath": event.notebookPath,
+            "cellId": event.cellId,
+            "timestamp": event.eventTime,
+            "priority": "urgent"
+        }
+
+        # Redis Pub/Sub経由でダッシュボードに緊急通知
+        redis_client = await get_redis_client()
+        await redis_client.publish("help_requests", json.dumps(help_alert))
+        logger.info(f"ヘルプアラート送信: {event.emailAddress}")
+
+    except Exception as e:
+        logger.error(f"ヘルプアラート送信エラー: {e}")
+        # エラーがあってもメイン処理は継続
+
+
 # 講師セッション開始イベントのハンドラー
 async def handle_student_session_start(event_data: Dict[str, Any], db: Session) -> bool:
     """
@@ -495,6 +758,16 @@ event_router.register_handler(
     "cell_executed", handle_cell_execution
 )  # フロントエンドのイベント名に合わせる
 event_router.register_handler("notebook_save", handle_notebook_save)
+event_router.register_handler("notebook_saved", handle_notebook_save)  # エイリアス
+
+# Phase 3追加イベントハンドラー
+event_router.register_handler("progress_update", handle_progress_update)
+event_router.register_handler("error_occurred", handle_error_occurred)
+
+# 追加イベントハンドラー（notebook_opened, help系）
+event_router.register_handler("notebook_opened", handle_notebook_opened)
+event_router.register_handler("help", handle_help_request)
+event_router.register_handler("help_stop", handle_help_stop)
 
 # 講師関連ハンドラーの登録
 event_router.register_handler("student_session_start", handle_student_session_start)

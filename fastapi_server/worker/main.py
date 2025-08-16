@@ -20,6 +20,12 @@ from db.redis_client import (  # noqa: E402
 from db.session import SessionLocal  # noqa: E402
 from worker.event_router import event_router  # noqa: E402
 from worker.health_monitor import health_monitor  # noqa: E402
+from worker.parallel_processor import (  # noqa: E402
+    parallel_processor,
+    initialize_parallel_processing,
+    shutdown_parallel_processing,
+    process_event_parallel
+)
 from core.realtime_notifier import realtime_notifier  # noqa: E402
 from core.influxdb_batch_writer import batch_writer  # noqa: E402
 
@@ -78,18 +84,27 @@ async def listen_to_redis():
         logger.error(f"[WORKER] Failed to initialize InfluxDB batch writer: {e}")
         # バッチライターは必須ではないため、エラーでも続行
 
+    # Phase 3: 並列処理システム初期化
+    try:
+        await initialize_parallel_processing()
+        print("[WORKER] Parallel processing system initialized")
+        logger.info("[WORKER] Parallel processing system initialized")
+    except Exception as e:
+        print(f"[WORKER] Failed to initialize parallel processing: {e}")
+        logger.error(f"[WORKER] Failed to initialize parallel processing: {e}")
+        raise
+
     # ハートビートタスクを開始
     heartbeat_task = asyncio.create_task(health_monitor.start_heartbeat())
     
     try:
-        redis_client = redis.Redis(
-            host=settings.REDIS_HOST, port=settings.REDIS_PORT, decode_responses=True
-        )
+        # 統一接続プールを使用
+        redis_client = await get_redis_client()
         print(
-            f"[WORKER] Redis client created: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
+            f"[WORKER] Redis client created using shared pool: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
         )
         logger.info(
-            f"[WORKER] Redis client created: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
+            f"[WORKER] Redis client created using shared pool: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
         )
 
         # Redis接続テスト
@@ -138,16 +153,25 @@ async def listen_to_redis():
                         f"[WORKER] Parsed event data: {event_data.get('eventType', 'unknown')}"
                     )
 
-                    # DBセッションを取得
-                    db = SessionLocal()
+                    # Phase 3強化: 並列処理システムでイベント処理
                     try:
-                        # イベントルーターを使用してイベントタイプに基づいて処理
-                        success = await event_router.route_event(event_data, db)
+                        task_id = await process_event_parallel(event_data)
+                        logger.debug(f"[WORKER] Event queued for parallel processing: {task_id}")
+                        success = True  # 並列キューイング成功
+                    except Exception as parallel_error:
+                        logger.warning(f"[WORKER] Parallel processing failed, falling back to direct processing: {parallel_error}")
                         
-                        # ヘルス監視: 処理済みメッセージ数を更新
-                        health_monitor.increment_processed_messages()
+                        # フォールバック: 従来の直接処理
+                        db = SessionLocal()
+                        try:
+                            success = await event_router.route_event(event_data, db)
+                        finally:
+                            db.close()
+                    
+                    # ヘルス監視: 処理済みメッセージ数を更新
+                    health_monitor.increment_processed_messages()
 
-                        if success:
+                    if success:
                             # 処理が成功したら通知を送信
                             notification = {
                                 "emailAddress": event_data.get("emailAddress"),
@@ -181,25 +205,24 @@ async def listen_to_redis():
                             logger.info(
                                 f"処理完了通知を送信: {event_data.get('event')} イベント"
                             )
-                        else:
-                            # ヘルス監視: エラー数を更新
-                            health_monitor.increment_error_count()
-                            
-                            # 処理に失敗した場合はエラーログを送信
-                            error_log = {
-                                "timestamp": event_data.get("timestamp", "unknown"),
-                                "emailAddress": event_data.get("emailAddress", "unknown"),
-                                "event": event_data.get("event", "unknown"),
-                                "error": "イベント処理に失敗しました",
-                                "status": "failed",
-                            }
-                            publisher_redis = await get_redis_client()
-                            await publisher_redis.publish(
-                                ERROR_CHANNEL, json.dumps(error_log)
-                            )
-                            logger.error(f"処理失敗: {error_log}")
-                    finally:
-                        db.close()
+                    else:
+                        # ヘルス監視: エラー数を更新
+                        health_monitor.increment_error_count()
+                        
+                        # 処理に失敗した場合はエラーログを送信
+                        error_log = {
+                            "timestamp": event_data.get("timestamp", "unknown"),
+                            "emailAddress": event_data.get("emailAddress", "unknown"),
+                            "event": event_data.get("event", "unknown"),
+                            "error": "イベント処理に失敗しました",
+                            "status": "failed",
+                        }
+                        publisher_redis = await get_redis_client()
+                        await publisher_redis.publish(
+                            ERROR_CHANNEL, json.dumps(error_log)
+                        )
+                        logger.error(f"処理失敗: {error_log}")
+                        
                 else:
                     # メッセージがない場合（タイムアウト）
                     if message_count % 60 == 0:  # 10分毎にログ出力 (10秒*60回)
@@ -243,6 +266,14 @@ async def listen_to_redis():
         except asyncio.CancelledError:
             pass
         
+        # Phase 3: 並列処理システム終了
+        try:
+            await shutdown_parallel_processing()
+            print("[WORKER] Parallel processing system shutdown completed")
+            logger.info("[WORKER] Parallel processing system shutdown completed")
+        except Exception as e:
+            logger.error(f"Parallel processing shutdown error: {e}")
+
         # InfluxDBバッチライター終了
         try:
             await batch_writer.stop_batch_writer()
@@ -255,7 +286,7 @@ async def listen_to_redis():
         # Redis接続を閉じる
         try:
             await pubsub.close()
-            await redis_client.close()
+            # Redis接続は共有プールのため明示的にcloseしない
         except Exception as e:
             logger.error(f"Redis cleanup error: {e}")
 

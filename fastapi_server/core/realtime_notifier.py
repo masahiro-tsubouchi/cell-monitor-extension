@@ -11,6 +11,7 @@ import redis.asyncio as redis
 
 from core.config import settings
 from core.connection_manager import manager
+from db.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +25,10 @@ class RealtimeNotifier:
     async def initialize(self):
         """通知システムを初期化"""
         try:
-            self.redis_client = redis.Redis(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                decode_responses=True
-            )
+            # 統一接続プールを使用
+            self.redis_client = await get_redis_client()
             await self.redis_client.ping()
-            logger.info("Realtime notifier initialized successfully")
+            logger.info("Realtime notifier initialized with shared Redis pool")
         except Exception as e:
             logger.error(f"Failed to initialize realtime notifier: {e}")
             raise

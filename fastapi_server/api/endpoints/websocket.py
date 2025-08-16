@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from core.connection_manager import manager
+from core.unified_connection_manager import unified_manager, ClientType
 
 router = APIRouter()
 
@@ -10,23 +11,19 @@ router = APIRouter()
 @router.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str, room: str = "default"):
     """
-    改善されたWebSocket接続エンドポイント
+    統一管理システム対応WebSocket接続エンドポイント
     クライアントIDとルームによる接続管理
     """
-    await manager.connect(websocket, client_id, room)
-    print(f"Client {client_id} connected to room {room}")
+    # 統一管理システムで接続（デフォルトは学生タイプ）
+    actual_client_id = await unified_manager.connect(
+        websocket=websocket,
+        client_type=ClientType.STUDENT,
+        client_id=client_id,
+        room=room
+    )
+    print(f"Client {actual_client_id} connected to room {room} via unified manager")
     
     try:
-        # 接続成功メッセージを送信
-        await manager.send_personal_message(
-            json.dumps({
-                "type": "connection_established",
-                "client_id": client_id,
-                "room": room,
-                "timestamp": datetime.utcnow().isoformat()
-            }),
-            client_id
-        )
         
         while True:
             # クライアントからのメッセージを受信
@@ -35,33 +32,30 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str, room: str = "
                 message_data = json.loads(data)
                 
                 # メッセージタイプに応じて処理
-                await handle_websocket_message(message_data, client_id, room)
+                await handle_websocket_message(message_data, actual_client_id, room)
                 
             except json.JSONDecodeError:
                 # JSON形式でない場合は単純なテキストメッセージとして処理
-                await handle_simple_message(data, client_id, room)
+                await handle_simple_message(data, actual_client_id, room)
                 
     except WebSocketDisconnect:
-        await manager.disconnect(client_id)
-        print(f"Client {client_id} disconnected from room {room}")
+        await unified_manager.disconnect(actual_client_id)
+        print(f"Client {actual_client_id} disconnected from room {room}")
     except Exception as e:
-        print(f"WebSocket error for client {client_id}: {e}")
-        await manager.disconnect(client_id)
+        print(f"WebSocket error for client {actual_client_id}: {e}")
+        await unified_manager.disconnect(actual_client_id)
 
 
 async def handle_websocket_message(message_data: dict, client_id: str, room: str):
-    """WebSocketメッセージを処理する"""
+    """WebSocketメッセージを処理する（統一管理システム使用）"""
     message_type = message_data.get("type", "unknown")
     
     if message_type == "ping":
         # ヘルスチェック（pong応答）
-        await manager.send_personal_message(
-            json.dumps({
-                "type": "pong",
-                "timestamp": datetime.utcnow().isoformat()
-            }),
-            client_id
-        )
+        await unified_manager.send_to_client(client_id, {
+            "type": "pong",
+            "timestamp": datetime.utcnow().isoformat()
+        })
     
     elif message_type == "join_room":
         # ルーム変更
@@ -72,41 +66,32 @@ async def handle_websocket_message(message_data: dict, client_id: str, room: str
         
     elif message_type == "progress_update":
         # 進捗更新メッセージをルーム内にブロードキャスト
-        await manager.broadcast(
-            json.dumps({
-                "type": "progress_broadcast",
-                "from_client": client_id,
-                "data": message_data.get("data", {}),
-                "timestamp": datetime.utcnow().isoformat()
-            }),
-            room
-        )
+        await unified_manager.broadcast_to_room(room, {
+            "type": "progress_broadcast",
+            "from_client": client_id,
+            "data": message_data.get("data", {}),
+            "timestamp": datetime.utcnow().isoformat()
+        })
     
     elif message_type == "status_request":
         # 接続統計を返す
-        stats = manager.get_connection_stats()
-        await manager.send_personal_message(
-            json.dumps({
-                "type": "status_response",
-                "stats": stats,
-                "timestamp": datetime.utcnow().isoformat()
-            }),
-            client_id
-        )
+        stats = unified_manager.get_connection_stats()
+        await unified_manager.send_to_client(client_id, {
+            "type": "status_response",
+            "stats": stats,
+            "timestamp": datetime.utcnow().isoformat()
+        })
     
     else:
         print(f"Unknown message type: {message_type} from client {client_id}")
 
 
 async def handle_simple_message(data: str, client_id: str, room: str):
-    """シンプルなテキストメッセージを処理する"""
-    await manager.broadcast(
-        json.dumps({
-            "type": "text_message",
-            "from_client": client_id,
-            "message": data,
-            "room": room,
-            "timestamp": datetime.utcnow().isoformat()
-        }),
-        room
-    )
+    """シンプルなテキストメッセージを処理する（統一管理システム使用）"""
+    await unified_manager.broadcast_to_room(room, {
+        "type": "text_message",
+        "from_client": client_id,
+        "message": data,
+        "room": room,
+        "timestamp": datetime.utcnow().isoformat()
+    })

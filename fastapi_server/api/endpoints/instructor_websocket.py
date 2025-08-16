@@ -14,6 +14,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Qu
 from sqlalchemy.orm import Session
 
 from core.connection_manager import manager
+from core.unified_connection_manager import unified_manager, ClientType, connect_instructor
 from core.security import verify_token
 from db.session import get_db
 from crud.crud_instructor import get_instructor_by_email, update_instructor_status

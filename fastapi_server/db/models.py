@@ -50,6 +50,7 @@ class Student(Base):
     )  # メールアドレスを主キーに変更
     name = Column(String, index=True, nullable=True)
     team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)  # チーム情報
+    is_requesting_help = Column(Boolean, default=False, nullable=False)  # ヘルプ要求ステータス
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -238,3 +238,19 @@ def get_student_sessions(
         .limit(limit)
         .all()
     )
+
+
+def set_help_request_status(db: Session, student_id: int, is_requesting: bool) -> bool:
+    """学生のヘルプ要求ステータスを設定する"""
+    try:
+        student = db.query(models.Student).filter(models.Student.id == student_id).first()
+        if student:
+            student.is_requesting_help = is_requesting
+            student.updated_at = datetime.utcnow()
+            db.commit()
+            return True
+        return False
+    except Exception as e:
+        print(f"Error setting help request status: {e}")
+        db.rollback()
+        return False

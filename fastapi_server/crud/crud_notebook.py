@@ -41,33 +41,46 @@ def get_cell_by_cell_id(
 
 def create_cell(db: Session, notebook_id: int, event: EventData) -> models.Cell:
     """新しいセルを作成する"""
+    # cellTypeのデフォルト値設定（NULL制約対応）
+    cell_type = event.cellType or "code"
+    
     db_cell = models.Cell(
         notebook_id=notebook_id,
         cell_id=event.cellId,
-        cell_type=event.cellType,
+        cell_type=cell_type,
         content=event.code,
         position=event.cellIndex,
     )
-    db.add(db_cell)
-    db.commit()
-    db.refresh(db_cell)
-    return db_cell
+    
+    try:
+        db.add(db_cell)
+        db.commit()
+        db.refresh(db_cell)
+        return db_cell
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def get_or_create_cell(db: Session, notebook_id: int, event: EventData) -> models.Cell:
     """指定された情報でセルを取得、存在しない場合は作成する"""
     if not event.cellId:
         raise ValueError("cellId is required")
-    db_cell = get_cell_by_cell_id(db, notebook_id=notebook_id, cell_id=event.cellId)
-    if not db_cell:
-        db_cell = create_cell(db, notebook_id=notebook_id, event=event)
-    # セルの内容が更新されている可能性を考慮
-    elif event.code and db_cell.content != event.code:
-        if isinstance(db_cell.content, str):
-            db_cell.content = event.code
-        else:
-            db_cell.content = event.code
-        db.commit()
-        db.refresh(db_cell)
+    
+    try:
+        db_cell = get_cell_by_cell_id(db, notebook_id=notebook_id, cell_id=event.cellId)
+        if not db_cell:
+            db_cell = create_cell(db, notebook_id=notebook_id, event=event)
+        # セルの内容が更新されている可能性を考慮
+        elif event.code and db_cell.content != event.code:
+            if isinstance(db_cell.content, str):
+                db_cell.content = event.code
+            else:
+                db_cell.content = event.code
+            db.commit()
+            db.refresh(db_cell)
 
-    return db_cell
+        return db_cell
+    except Exception as e:
+        db.rollback()
+        raise e
