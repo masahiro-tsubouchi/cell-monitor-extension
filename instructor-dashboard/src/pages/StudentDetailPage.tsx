@@ -85,9 +85,6 @@ export const StudentDetailPage: React.FC = () => {
     }
   };
 
-  const handleBackToList = () => {
-    navigate('/dashboard/students');
-  };
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');
@@ -161,9 +158,9 @@ export const StudentDetailPage: React.FC = () => {
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
-          onClick={handleBackToList}
+          onClick={handleBackToDashboard}
         >
-          受講生一覧に戻る
+          ダッシュボードに戻る
         </Button>
       </Container>
     );
@@ -182,14 +179,6 @@ export const StudentDetailPage: React.FC = () => {
             sx={{ textDecoration: 'none' }}
           >
             📚 学習進捗ダッシュボード
-          </Link>
-          <Link
-            component="button"
-            variant="body2"
-            onClick={handleBackToList}
-            sx={{ textDecoration: 'none' }}
-          >
-            👥 受講生詳細一覧
           </Link>
           <Typography color="text.primary">👤 {student.userName}</Typography>
         </Breadcrumbs>
@@ -223,9 +212,9 @@ export const StudentDetailPage: React.FC = () => {
             <Button
               variant="outlined"
               startIcon={<ArrowBackIcon />}
-              onClick={handleBackToList}
+              onClick={handleBackToDashboard}
             >
-              一覧に戻る
+              ダッシュボードに戻る
             </Button>
           </Box>
         </Box>

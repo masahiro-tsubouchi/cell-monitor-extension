@@ -38,6 +38,10 @@ import {
   SkeletonLoader
 } from '../components/lazy/LazyComponentLoader';
 import { MetricsPanel } from '../components/progress/MetricsPanel';
+import { EnhancedMetricsPanel } from '../components/enhanced/MetricsPanel';
+import { CriticalAlertBar } from '../components/enhanced/AlertSystem';
+import { KeyboardShortcutsHelp } from '../components/enhanced/KeyboardHelp';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { StudentActivity } from '../services/dashboardAPI';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -107,8 +111,7 @@ const ViewModeControls = memo<{
   viewMode: DashboardViewMode;
   studentsCount: number;
   onViewModeChange: (mode: DashboardViewMode) => void;
-  onViewStudentsList: () => void;
-}>(({ viewMode, studentsCount, onViewModeChange, onViewStudentsList }) => (
+}>(({ viewMode, studentsCount, onViewModeChange }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
     <Typography variant="h6" component="h2" fontWeight="bold">
       👥 受講生一覧 ({studentsCount}名) - {getViewModeLabel(viewMode)}
@@ -135,14 +138,6 @@ const ViewModeControls = memo<{
         </ToggleButton>
       </ToggleButtonGroup>
 
-      <Button
-        variant="outlined"
-        startIcon={<ListIcon />}
-        onClick={onViewStudentsList}
-        sx={{ fontWeight: 'bold' }}
-      >
-        詳細一覧を見る
-      </Button>
     </Box>
   </Box>
 ));
@@ -185,6 +180,7 @@ export const ProgressDashboard: React.FC = () => {
   });
 
   const [expandedTeamsCount, setExpandedTeamsCount] = useState<number>(0);
+  const [showFilter, setShowFilter] = useState<boolean>(false);
 
   // Store から状態取得
   const {
@@ -259,9 +255,6 @@ export const ProgressDashboard: React.FC = () => {
     updateAutoRefresh(newAutoRefresh);
   }, [setAutoRefresh]);
 
-  const handleViewStudentsList = useCallback(() => {
-    navigate('/dashboard/students');
-  }, [navigate]);
 
   const handleViewModeChange = useCallback((newViewMode: DashboardViewMode) => {
     setViewMode(newViewMode);
@@ -273,11 +266,52 @@ export const ProgressDashboard: React.FC = () => {
     navigate('/admin');
   }, [navigate]);
 
+  const handleHelpFocus = useCallback((student: StudentActivity) => {
+    handleStudentClick(student);
+    // スムーズスクロールで学生カードに移動
+    setTimeout(() => {
+      const element = document.querySelector(`[data-student-id="${student.emailAddress}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  }, [handleStudentClick]);
+
+  const handleToggleFilter = useCallback(() => {
+    setShowFilter(prev => !prev);
+  }, []);
+
+  const handleSortByPriority = useCallback(() => {
+    // 緊急度順でソート（ヘルプ > エラー > アクティブ > その他）
+    // Note: 実際のソート機能は各表示コンポーネントで実装
+    console.log('Priority sort triggered');
+  }, []);
+
+  const handleEscape = useCallback(() => {
+    setShowFilter(false);
+    selectStudent(null);
+  }, [selectStudent]);
+
+  // Phase 1.3: キーボードショートカット設定
+  const { shortcuts } = useKeyboardShortcuts({
+    students,
+    onHelpFocus: handleHelpFocus,
+    onRefresh: handleRefresh,
+    onToggleFilter: handleToggleFilter,
+    onSortByPriority: handleSortByPriority,
+    onEscape: handleEscape
+  });
+
   // レンダリング統計（開発時のみ）
   const renderStats = useMemo(() => ({
     optimizedComponents: 5, // OptimizedStudentCard, VirtualizedStudentList, etc.
     lazyComponents: 4 // LazyActivityChart, LazyTeamMapView, etc.
   }), []);
+
+  // ヘルプ要請数を計算
+  const helpRequestCount = useMemo(() => {
+    return students.filter(s => s.status === 'help').length;
+  }, [students]);
 
 
   return (
@@ -296,6 +330,13 @@ export const ProgressDashboard: React.FC = () => {
         renderStats={renderStats}
       />
 
+      {/* Phase 1.1: 緊急アラートシステム */}
+      <CriticalAlertBar 
+        students={students}
+        onHelpStudentClick={handleStudentClick}
+        soundAlertEnabled={true}
+      />
+
       {/* エラー表示 */}
       {error && (
         <Alert severity="error" onClose={clearError} sx={{ mb: 3 }}>
@@ -303,9 +344,13 @@ export const ProgressDashboard: React.FC = () => {
         </Alert>
       )}
 
-      {/* メトリクスパネル */}
+      {/* Phase 1.2: 強化メトリクスパネル */}
       <Box sx={{ mb: 4 }}>
-        <MetricsPanel metrics={metrics} lastUpdated={lastUpdated} />
+        <EnhancedMetricsPanel 
+          metrics={metrics} 
+          students={students}
+          lastUpdated={lastUpdated} 
+        />
       </Box>
 
       <Divider sx={{ my: 3 }} />
@@ -326,7 +371,6 @@ export const ProgressDashboard: React.FC = () => {
           viewMode={viewMode}
           studentsCount={students.length}
           onViewModeChange={handleViewModeChange}
-          onViewStudentsList={handleViewStudentsList}
         />
 
         {isLoading ? (
@@ -371,6 +415,9 @@ export const ProgressDashboard: React.FC = () => {
         open={!!selectedStudent}
         onClose={() => selectStudent(null)}
       />
+
+      {/* Phase 1.3: キーボードショートカットヘルプ */}
+      <KeyboardShortcutsHelp helpStudentsCount={helpRequestCount} />
 
       {/* リフレッシュボタン */}
       <Fab

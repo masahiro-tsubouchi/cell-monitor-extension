@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { ProgressDashboard } from './pages/ProgressDashboard';
-import { StudentsListPage } from './pages/StudentsListPage';
 import { StudentDetailPage } from './pages/StudentDetailPage';
 import { AdminPanel } from './pages/admin/AdminPanel';
 import { ErrorBoundary } from './components/error/ErrorBoundary';
@@ -100,15 +99,6 @@ function App() {
                   } 
                 />
 
-                {/* 学生一覧ページ */}
-                <Route 
-                  path="/dashboard/students" 
-                  element={
-                    <ErrorBoundary>
-                      <StudentsListPage />
-                    </ErrorBoundary>
-                  } 
-                />
 
                 {/* 個別学生詳細ページ */}
                 <Route 
