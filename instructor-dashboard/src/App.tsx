@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { ProgressDashboard } from './pages/ProgressDashboard';
-import { OptimizedProgressDashboard } from './pages/OptimizedProgressDashboard';
 import { StudentsListPage } from './pages/StudentsListPage';
 import { StudentDetailPage } from './pages/StudentDetailPage';
 import { AdminPanel } from './pages/admin/AdminPanel';
@@ -91,32 +90,12 @@ function App() {
           <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             <ErrorBoundary>
               <Routes>
-                {/* 従来版ダッシュボード（レガシー） */}
+                {/* メインダッシュボード（旧最適化版） */}
                 <Route 
                   path="/dashboard" 
                   element={
                     <ErrorBoundary>
                       <ProgressDashboard />
-                    </ErrorBoundary>
-                  } 
-                />
-
-                {/* レガシー版への明示的アクセス */}
-                <Route 
-                  path="/dashboard/legacy" 
-                  element={
-                    <ErrorBoundary>
-                      <ProgressDashboard />
-                    </ErrorBoundary>
-                  } 
-                />
-                
-                {/* 最適化版ダッシュボード */}
-                <Route 
-                  path="/dashboard/optimized" 
-                  element={
-                    <ErrorBoundary>
-                      <OptimizedProgressDashboard />
                     </ErrorBoundary>
                   } 
                 />
@@ -151,11 +130,11 @@ function App() {
                   } 
                 />
 
-                {/* デフォルトルート - 最適化版をデフォルトに変更 */}
-                <Route path="/" element={<Navigate to="/dashboard/optimized" replace />} />
+                {/* デフォルトルート */}
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-                {/* 404ページ - 最適化版へリダイレクト */}
-                <Route path="*" element={<Navigate to="/dashboard/optimized" replace />} />
+                {/* 404ページ */}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </ErrorBoundary>
           </Box>

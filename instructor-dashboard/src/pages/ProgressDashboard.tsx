@@ -1,4 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+/**
+ * Progress Dashboard
+ * 高性能ダッシュボード（旧最適化版を標準化）
+ */
+
+import React, { useEffect, useRef, useMemo, useCallback, useState, memo } from 'react';
 import {
   Box,
   Container,
@@ -19,18 +24,21 @@ import {
   List as ListIcon,
   ViewModule as GridIcon,
   Group as TeamIcon,
-  Speed as OptimizeIcon,
   Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useProgressDashboardStore } from '../stores/progressDashboardStore';
-import { StudentProgressGrid } from '../components/progress/StudentProgressGrid';
-import { TeamProgressView } from '../components/progress/TeamProgressView';
-import { TeamMapView } from '../components/progress/TeamMapView';
+import { useWorkerProcessing } from '../hooks/useWorkerProcessing';
+import { OptimizedTeamGrid } from '../components/optimized/OptimizedTeamGrid';
+import { VirtualizedStudentList } from '../components/virtualized/VirtualizedStudentList';
+import {
+  OptimizedActivityChart,
+  OptimizedTeamMapView,
+  OptimizedStudentDetailModal,
+  VisibilityBasedLoader,
+  SkeletonLoader
+} from '../components/lazy/LazyComponentLoader';
 import { MetricsPanel } from '../components/progress/MetricsPanel';
-import { ActivityChart } from '../components/progress/ActivityChart';
-import { StudentDetailModal } from '../components/progress/StudentDetailModal';
 import { StudentActivity } from '../services/dashboardAPI';
-import webSocketService from '../services/websocket';
 import { useNavigate } from 'react-router-dom';
 import {
   getInstructorSettings,
@@ -38,23 +46,147 @@ import {
   updateAutoRefresh,
   updateSelectedStudent
 } from '../utils/instructorStorage';
-import { DashboardViewMode, convertLegacyViewMode } from '../types/dashboard';
+import { DashboardViewMode, getViewModeLabel } from '../types/dashboard';
+import { useDashboardLogic } from '../hooks/useDashboardLogic';
+
+// メモ化されたヘッダーコンポーネント
+const DashboardHeader = memo<{
+  autoRefresh: boolean;
+  expandedTeamsCount: number;
+  onAutoRefreshToggle: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onOpenAdmin: () => void;
+}>(({ autoRefresh, expandedTeamsCount, onAutoRefreshToggle, onOpenAdmin }) => (
+  <Box sx={{ mb: 4 }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+      <Box>
+        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+          📚 学習進捗ダッシュボード
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          受講生のJupyterLab学習活動をリアルタイムで監視
+        </Typography>
+        {autoRefresh && (
+          <Typography variant="caption" color="primary" sx={{ mt: 0.5, display: 'block' }}>
+            📡 スマート更新: {expandedTeamsCount > 0 ? '5秒間隔（詳細監視）' : '15秒間隔（概要監視）'}
+          </Typography>
+        )}
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={autoRefresh}
+              onChange={onAutoRefreshToggle}
+              icon={<AutoIcon />}
+              checkedIcon={<AutoIcon />}
+            />
+          }
+          label="自動更新"
+        />
+        <Button
+          variant="outlined"
+          onClick={onOpenAdmin}
+          sx={{ 
+            minWidth: 'auto',
+            padding: '8px 12px'
+          }}
+          size="small"
+        >
+          <SettingsIcon sx={{ fontSize: '1.5rem' }} />
+        </Button>
+      </Box>
+    </Box>
+  </Box>
+));
+
+DashboardHeader.displayName = 'DashboardHeader';
+
+// メモ化されたビューモードコントロール
+const ViewModeControls = memo<{
+  viewMode: DashboardViewMode;
+  studentsCount: number;
+  onViewModeChange: (mode: DashboardViewMode) => void;
+  onViewStudentsList: () => void;
+}>(({ viewMode, studentsCount, onViewModeChange, onViewStudentsList }) => (
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+    <Typography variant="h6" component="h2" fontWeight="bold">
+      👥 受講生一覧 ({studentsCount}名) - {getViewModeLabel(viewMode)}
+    </Typography>
+
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <ToggleButtonGroup
+        value={viewMode}
+        exclusive
+        onChange={(_, mode) => mode && onViewModeChange(mode)}
+        size="small"
+      >
+        <ToggleButton value="team">
+          <TeamIcon sx={{ mr: 1 }} />
+          チーム表示
+        </ToggleButton>
+        <ToggleButton value="grid">
+          <GridIcon sx={{ mr: 1 }} />
+          チームグリッド
+        </ToggleButton>
+        <ToggleButton value="virtualized">
+          <ListIcon sx={{ mr: 1 }} />
+          仮想リスト
+        </ToggleButton>
+      </ToggleButtonGroup>
+
+      <Button
+        variant="outlined"
+        startIcon={<ListIcon />}
+        onClick={onViewStudentsList}
+        sx={{ fontWeight: 'bold' }}
+      >
+        詳細一覧を見る
+      </Button>
+    </Box>
+  </Box>
+));
+
+ViewModeControls.displayName = 'ViewModeControls';
+
+// getViewModeLabel関数は../types/dashboardからインポート済み
+
+// メモ化されたパフォーマンス統計表示
+const PerformanceStats = memo<{
+  workerStats: any;
+  renderStats: any;
+}>(({ workerStats, renderStats }) => {
+  if (process.env.NODE_ENV !== 'development') return null;
+
+  return (
+    <Box sx={{ mb: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+      <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block' }}>
+        🔧 パフォーマンス統計:
+      </Typography>
+      <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block' }}>
+        Worker: {workerStats.completedTasks}タスク完了, 平均{workerStats.averageProcessingTime.toFixed(1)}ms
+      </Typography>
+      <Typography variant="caption" sx={{ fontFamily: 'monospace', display: 'block' }}>
+        レンダリング: 最適化済みコンポーネント数 {renderStats.optimizedComponents}
+      </Typography>
+    </Box>
+  );
+});
+
+PerformanceStats.displayName = 'PerformanceStats';
 
 export const ProgressDashboard: React.FC = () => {
   const navigate = useNavigate();
 
-  // 講師別設定を初期化（レガシー互換）
-  const [viewMode, setViewMode] = React.useState<'grid' | 'team'>(() => {
+  // 講師別設定を初期化
+  const [viewMode, setViewMode] = useState<DashboardViewMode>(() => {
     const settings = getInstructorSettings();
-    return settings.viewMode;
+    return settings.viewMode === 'grid' ? 'grid' : 'team';
   });
 
-  // 展開状態の変更を監視するためのstate
-  const [expandedTeamsCount, setExpandedTeamsCount] = React.useState<number>(() => {
-    const settings = getInstructorSettings();
-    return settings.expandedTeams.length;
-  });
+  const [expandedTeamsCount, setExpandedTeamsCount] = useState<number>(0);
 
+  // Store から状態取得
   const {
     students,
     metrics,
@@ -65,17 +197,20 @@ export const ProgressDashboard: React.FC = () => {
     autoRefresh,
     selectedStudent,
     refreshData,
-    // updateStudentsIncremental, // 将来のWebSocket差分更新用
     setAutoRefresh,
     selectStudent,
     updateStudentStatus,
     clearError,
-    // 新機能: 状態保持関連
     markUserActive,
-    flushQueuedUpdates,
-    setDeferredUpdates
+    flushQueuedUpdates
   } = useProgressDashboardStore();
 
+  // Worker 処理フック
+  const workerProcessing = useWorkerProcessing();
+
+
+  // 共通ダッシュボードロジック
+  const dashboardLogic = useDashboardLogic();
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // コンポーネントマウント時にデータ読み込み
@@ -83,211 +218,87 @@ export const ProgressDashboard: React.FC = () => {
     refreshData();
   }, [refreshData]);
 
-  // 新機能: ユーザーインタラクション検出
+  // ユーザーインタラクション検出（共通ロジック使用）
   useEffect(() => {
-    const handleUserInteraction = () => {
-      markUserActive();
-    };
+    return dashboardLogic.setupUserInteractionDetection(markUserActive);
+  }, [dashboardLogic, markUserActive]);
 
-    const events = ['mousedown', 'mouseup', 'scroll', 'keydown', 'touchstart'];
-    
-    events.forEach(eventName => {
-      window.addEventListener(eventName, handleUserInteraction, { passive: true });
-    });
-
-    return () => {
-      events.forEach(eventName => {
-        window.removeEventListener(eventName, handleUserInteraction);
-      });
-    };
-  }, [markUserActive]);
-
-  // WebSocketイベントハンドラー設定
+  // WebSocketイベントハンドラー設定（共通ロジック使用）
   useEffect(() => {
-    const eventHandlers = {
-      onConnect: () => {
-        console.log('Progress dashboard WebSocket connected');
-      },
-      onDisconnect: () => {
-        console.log('Progress dashboard WebSocket disconnected');
-      },
-      onStudentProgressUpdate: (data: StudentActivity) => {
-        console.log('Student progress update:', data);
-        // Update specific student in store
-        updateStudentStatus(data.emailAddress, {
-          userName: data.userName,
-          currentNotebook: data.currentNotebook,
-          lastActivity: data.lastActivity,
-          status: data.status,
-          cellExecutions: (data.cellExecutions || 1),
-          errorCount: data.errorCount
-        });
-      },
-      onCellExecution: (data: any) => {
-        console.log('Cell execution event:', data);
-        // Update execution count
-        updateStudentStatus(data.emailAddress, {
-          cellExecutions: (data.cellExecutions || 1),
-          lastActivity: '今',
-          status: 'active' as const
-        });
-      },
-      onHelpRequest: (data: any) => {
-        console.log('Help request event:', data);
-        // Help request - immediate full refresh for accuracy
-        updateStudentStatus(data.emailAddress, {
-          isRequestingHelp: true,
-          lastActivity: '今',
-          status: 'help' as any
-        });
-        // Trigger immediate full refresh to ensure help status is accurate
-        setTimeout(() => refreshData(), 100);
-      },
-      onHelpResolved: (data: any) => {
-        console.log('Help resolved event:', data);
-        // Help resolved - immediate full refresh
-        updateStudentStatus(data.emailAddress, {
-          isRequestingHelp: false,
-          lastActivity: '今'
-        });
-        // Trigger immediate full refresh
-        setTimeout(() => refreshData(), 100);
-      },
-      onError: (error: any) => {
-        console.error('Progress dashboard WebSocket error:', error);
-      }
-    };
+    const eventHandlers = dashboardLogic.setupWebSocketHandlers(
+      updateStudentStatus,
+      refreshData
+    );
+    return dashboardLogic.initializeWebSocket(eventHandlers);
+  }, [dashboardLogic, updateStudentStatus, refreshData]);
 
-    webSocketService.setEventHandlers(eventHandlers);
-
-    // ダッシュボード専用WebSocket接続を開始
-    webSocketService.connectToDashboard();
-
-    return () => {
-      // Cleanup event handlers when component unmounts
-      webSocketService.setEventHandlers({});
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 依存配列を空にして初回のみ実行 - refreshData, updateStudentStatusは意図的に除外
-
-  // スマート自動リフレッシュ設定 (方法B: 展開状態に応じた更新頻度)
+  // 自動リフレッシュ設定（共通ロジック使用）
   useEffect(() => {
-    if (autoRefresh) {
-      // 展開チームがある場合は高頻度 (5秒)、ない場合は低頻度 (15秒)
-      const updateInterval = expandedTeamsCount > 0 ? 5000 : 15000;
+    return dashboardLogic.setupAutoRefresh(
+      autoRefresh,
+      expandedTeamsCount,
+      refreshData,
+      refreshIntervalRef
+    );
+  }, [dashboardLogic, autoRefresh, expandedTeamsCount, refreshData]);
 
-      console.log(`Smart refresh: ${expandedTeamsCount}チーム展開中 → ${updateInterval/1000}秒間隔で更新`);
-
-      refreshIntervalRef.current = setInterval(() => {
-        refreshData();
-      }, updateInterval);
-    } else if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
-      refreshIntervalRef.current = null;
-    }
-
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, expandedTeamsCount]); // 展開チーム数の変更を監視 - refreshDataは意図的に除外
-
-  const handleStudentClick = (student: StudentActivity) => {
+  // イベントハンドラー（メモ化）
+  const handleStudentClick = useCallback((student: StudentActivity) => {
     selectStudent(student);
-    updateSelectedStudent(student.emailAddress); // ローカルストレージに保存
-    console.log('Selected student:', student);
-  };
+    updateSelectedStudent(student.emailAddress);
+  }, [selectStudent]);
 
-  const handleRefresh = () => {
-    // 新機能: 手動更新時は保留中の更新も即座に適用
+  const handleRefresh = useCallback(() => {
     flushQueuedUpdates();
     refreshData();
-  };
+  }, [flushQueuedUpdates, refreshData]);
 
-  const handleAutoRefreshToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAutoRefreshToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const newAutoRefresh = event.target.checked;
     setAutoRefresh(newAutoRefresh);
-    updateAutoRefresh(newAutoRefresh); // ローカルストレージに保存
-  };
+    updateAutoRefresh(newAutoRefresh);
+  }, [setAutoRefresh]);
 
-  const handleViewStudentsList = () => {
+  const handleViewStudentsList = useCallback(() => {
     navigate('/dashboard/students');
-  };
+  }, [navigate]);
 
-  const handleViewModeChange = (
-    event: React.MouseEvent<HTMLElement>,
-    newViewMode: 'grid' | 'team' | null,
-  ) => {
-    if (newViewMode !== null) {
-      setViewMode(newViewMode);
-      updateViewMode(newViewMode); // ローカルストレージに保存
-    }
-  };
+  const handleViewModeChange = useCallback((newViewMode: DashboardViewMode) => {
+    setViewMode(newViewMode);
+    updateViewMode(newViewMode as any);
+  }, []);
+
+
+  const handleOpenAdmin = useCallback(() => {
+    navigate('/admin');
+  }, [navigate]);
+
+  // レンダリング統計（開発時のみ）
+  const renderStats = useMemo(() => ({
+    optimizedComponents: 5, // OptimizedStudentCard, VirtualizedStudentList, etc.
+    lazyComponents: 4 // LazyActivityChart, LazyTeamMapView, etc.
+  }), []);
+
 
   return (
     <Container maxWidth={false} sx={{ py: 3 }}>
       {/* ヘッダー */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-          <Box>
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-              📚 学習進捗ダッシュボード
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              受講生のJupyterLab学習活動をリアルタイムで監視
-            </Typography>
-            {autoRefresh && (
-              <Typography variant="caption" color="primary" sx={{ mt: 0.5, display: 'block' }}>
-                📡 スマート更新: {expandedTeamsCount > 0 ? '5秒間隔（詳細監視）' : '15秒間隔（概要監視）'}
-              </Typography>
-            )}
-          </Box>
+      <DashboardHeader
+        autoRefresh={autoRefresh}
+        expandedTeamsCount={expandedTeamsCount}
+        onAutoRefreshToggle={handleAutoRefreshToggle}
+        onOpenAdmin={handleOpenAdmin}
+      />
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<OptimizeIcon />}
-              onClick={() => navigate('/dashboard/optimized')}
-              sx={{ fontWeight: 'bold' }}
-              color="success"
-            >
-              最適化版を試す
-            </Button>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={autoRefresh}
-                  onChange={handleAutoRefreshToggle}
-                  icon={<AutoIcon />}
-                  checkedIcon={<AutoIcon />}
-                />
-              }
-              label="自動更新"
-            />
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/admin')}
-              sx={{ 
-                minWidth: 'auto',
-                padding: '8px 12px'
-              }}
-              size="small"
-            >
-              <SettingsIcon sx={{ fontSize: '1.5rem' }} />
-            </Button>
-          </Box>
-        </Box>
-      </Box>
+      {/* パフォーマンス統計 */}
+      <PerformanceStats
+        workerStats={workerProcessing}
+        renderStats={renderStats}
+      />
 
       {/* エラー表示 */}
       {error && (
-        <Alert
-          severity="error"
-          onClose={clearError}
-          sx={{ mb: 3 }}
-        >
+        <Alert severity="error" onClose={clearError} sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
@@ -299,56 +310,24 @@ export const ProgressDashboard: React.FC = () => {
 
       <Divider sx={{ my: 3 }} />
 
-      {/* 活動チャート */}
-      <Box sx={{ mb: 4 }}>
-        <ActivityChart data={activityChart} timeRange="1h" />
-      </Box>
+      {/* 活動チャート（遅延読み込み） */}
+      <VisibilityBasedLoader fallback={<SkeletonLoader type="chart" />}>
+        <Box sx={{ mb: 4 }}>
+          <OptimizedActivityChart data={activityChart} timeRange="1h" />
+        </Box>
+      </VisibilityBasedLoader>
 
       <Divider sx={{ my: 3 }} />
-
-      {/* チームMAPセクション */}
-      <TeamMapView
-        students={students}
-        teams={Array.from(new Set(students.map(s => s.teamName).filter((name): name is string => Boolean(name))))}
-      />
 
 
       {/* 受講生進捗表示 */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" component="h2" fontWeight="bold">
-            👥 受講生一覧 ({viewMode === 'grid' ? Math.min(students.length, 12) : students.length}/{students.length}名表示)
-          </Typography>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* 表示モード切り替え */}
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={handleViewModeChange}
-              aria-label="view mode"
-              size="small"
-            >
-              <ToggleButton value="team" aria-label="team view">
-                <TeamIcon sx={{ mr: 1 }} />
-                チーム表示
-              </ToggleButton>
-              <ToggleButton value="grid" aria-label="grid view">
-                <GridIcon sx={{ mr: 1 }} />
-                グリッド表示
-              </ToggleButton>
-            </ToggleButtonGroup>
-
-            <Button
-              variant="outlined"
-              startIcon={<ListIcon />}
-              onClick={handleViewStudentsList}
-              sx={{ fontWeight: 'bold' }}
-            >
-              詳細一覧を見る
-            </Button>
-          </Box>
-        </Box>
+        <ViewModeControls
+          viewMode={viewMode}
+          studentsCount={students.length}
+          onViewModeChange={handleViewModeChange}
+          onViewStudentsList={handleViewStudentsList}
+        />
 
         {isLoading ? (
           <Box sx={{
@@ -362,23 +341,32 @@ export const ProgressDashboard: React.FC = () => {
               データを読み込み中...
             </Typography>
           </Box>
+        ) : viewMode === 'virtualized' ? (
+          <VirtualizedStudentList
+            students={students}
+            onStudentClick={handleStudentClick}
+            height={600}
+            showControls={true}
+          />
         ) : viewMode === 'team' ? (
-          <TeamProgressView
+          <VisibilityBasedLoader fallback={<SkeletonLoader type="grid" count={4} />}>
+            <OptimizedTeamMapView
+              students={students}
+              teams={Array.from(new Set(students.map(s => s.teamName).filter((name): name is string => Boolean(name))))}
+            />
+          </VisibilityBasedLoader>
+        ) : (
+          <OptimizedTeamGrid
             students={students}
             onStudentClick={handleStudentClick}
             onExpandedTeamsChange={setExpandedTeamsCount}
-          />
-        ) : (
-          <StudentProgressGrid
-            students={students.slice(0, 12)}
-            onStudentClick={handleStudentClick}
-            onRefresh={refreshData}
+            maxTeamsToShow={8}
           />
         )}
       </Box>
 
-      {/* 受講生詳細モーダル */}
-      <StudentDetailModal
+      {/* 受講生詳細モーダル（遅延読み込み） */}
+      <OptimizedStudentDetailModal
         student={selectedStudent}
         open={!!selectedStudent}
         onClose={() => selectStudent(null)}
