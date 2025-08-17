@@ -30,13 +30,8 @@ ARG JUPYTERLAB_VERSION=4.0
 # Pythonビルドツールのインストール
 RUN pip install --no-cache-dir --upgrade pip build jupyterlab~=${JUPYTERLAB_VERSION} wheel twine
 
-# 非rootユーザーでの実行（セキュリティ強化）
-RUN useradd --create-home --shell /bin/bash builder && \
-    chown -R builder:builder /app
-USER builder
-
 # 拡張機能ソースコードのコピー
-COPY --chown=builder:builder . .
+COPY . .
 
 # ビルドプロセスの実行コマンド
 # docker compose runで実行される全体ビルドプロセス

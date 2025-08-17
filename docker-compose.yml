@@ -170,6 +170,18 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    command: >
+      redis-server
+      --maxclients 2000
+      --maxmemory 1024mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 300
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: ${HEALTH_CHECK_INTERVAL:-30s}
@@ -185,16 +197,19 @@ services:
   #       - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
   #       - NODE_MAJOR_VERSION=${NODE_MAJOR_VERSION:-20}
   #       - JUPYTERLAB_VERSION=${JUPYTERLAB_VERSION:-4.0}
-    # volumes:
-    #   # ビルド成果物(.whl)をホストに反映させるためにマウント
-    #   - ./cell-monitor-extension:/app
-    # environment:
-    #   # 生成されるファイルの所有者をホストユーザーに合わせる
-    #   - HOST_UID=${HOST_UID:-1000}
-    #   - HOST_GID=${HOST_GID:-1000}
-    #   - NODE_ENV=${NODE_ENV:-development}
+  #   volumes:
+  #     # ビルド成果物(.whl)をホストに反映させるためにマウント
+  #     - ./cell-monitor-extension:/app
+  #     # ホスト側の壊れた/不整合な node_modules を無視して、コンテナ内のクリーンな依存を使う
+  #     - extension_node_modules:/app/node_modules
+  #   environment:
+  #     # 生成されるファイルの所有者をホストユーザーに合わせる
+  #     - HOST_UID=${HOST_UID:-1000}
+  #     - HOST_GID=${HOST_GID:-1000}
+  #     - NODE_ENV=${NODE_ENV:-development}
 
 volumes:
   postgres_data:
   influxdb_data:
   redis_data:
+  extension_node_modules:

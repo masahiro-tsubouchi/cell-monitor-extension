@@ -1,0 +1,25 @@
+# JupyterLab Cell Monitor Extension - 負荷テスト用依存関係
+# インストール: pip install -r tests/load-testing/requirements.txt
+
+# HTTP クライアント
+aiohttp>=3.8.0
+
+# 非同期処理
+asyncio-mqtt>=0.11.0
+
+# データ処理
+pandas>=1.5.0
+numpy>=1.21.0
+
+# ログ・レポート生成
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# JSON・YAML処理
+pyyaml>=6.0
+
+# プログレスバー
+tqdm>=4.64.0
+
+# 統計分析
+scipy>=1.9.0

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 
-from db.redis_client import get_redis_client, PROGRESS_CHANNEL
+from db.redis_client import get_redis_client, PROGRESS_CHANNEL, safe_redis_publish
 from db.session import get_db
 from schemas.event import EventData
 from core.unified_connection_manager import unified_manager, ClientType
@@ -230,49 +230,46 @@ async def _process_events_transaction(
 
 async def _enhanced_redis_publish(redis_client, events: List[EventData], batch_id: str) -> int:
     """
-    Phase 3強化: トランザクション対応Redis発行
+    Phase 3強化: 高負荷対応Redis発行（サーキットブレーカー付き）
     """
     published_count = 0
-    retry_count = 0
     
-    while retry_count <= BATCH_RETRY_COUNT:
-        try:
-            # チャンク毎にパイプライン処理
-            for i in range(0, len(events), MAX_REDIS_PIPELINE_SIZE):
-                chunk = events[i:i + MAX_REDIS_PIPELINE_SIZE]
-                
-                # Redis トランザクション
-                pipe = redis_client.pipeline(transaction=True)
-                pipe.multi()
-                
-                for event in chunk:
-                    # Phase 3強化: メタデータ追加
-                    enhanced_event = {
-                        **event.model_dump(),
-                        "batch_id": batch_id,
-                        "processed_at": datetime.now(timezone.utc).isoformat(),
-                        "processing_version": "phase3_enhanced"
-                    }
-                    pipe.publish(PROGRESS_CHANNEL, json.dumps(enhanced_event))
-                
-                # パイプライン実行
-                await pipe.execute()
-                published_count += len(chunk)
-                
-                # 負荷分散
-                if len(events) > MAX_REDIS_PIPELINE_SIZE:
-                    await asyncio.sleep(0.001)
+    # チャンク毎に並列処理
+    for i in range(0, len(events), MAX_REDIS_PIPELINE_SIZE):
+        chunk = events[i:i + MAX_REDIS_PIPELINE_SIZE]
+        
+        # 各イベントを個別に安全に送信
+        chunk_tasks = []
+        for event in chunk:
+            # Phase 3強化: メタデータ追加
+            enhanced_event = {
+                **event.model_dump(),
+                "batch_id": batch_id,
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+                "processing_version": "phase3_enhanced_safe"
+            }
+            message = json.dumps(enhanced_event)
             
-            logger.debug(f"Redis publish successful for batch {batch_id}: {published_count} events")
-            return published_count
-            
-        except Exception as e:
-            retry_count += 1
-            if retry_count > BATCH_RETRY_COUNT:
-                raise Exception(f"Redis publish failed after {BATCH_RETRY_COUNT} retries: {e}")
-            
-            logger.warning(f"Redis publish retry {retry_count}/{BATCH_RETRY_COUNT} for batch {batch_id}: {e}")
-            await asyncio.sleep(0.1 * retry_count)  # 指数バックオフ
+            # 新しい安全なRedis publish関数を使用
+            task = safe_redis_publish(PROGRESS_CHANNEL, message, max_retries=3)
+            chunk_tasks.append(task)
+        
+        # チャンク内のタスクを並列実行
+        results = await asyncio.gather(*chunk_tasks, return_exceptions=True)
+        
+        # 成功数をカウント
+        for result in results:
+            if result is True:  # safe_redis_publishはboolを返す
+                published_count += 1
+            elif isinstance(result, Exception):
+                logger.warning(f"Event publish failed in batch {batch_id}: {result}")
+        
+        # 負荷分散のための小さな待機
+        if len(events) > MAX_REDIS_PIPELINE_SIZE:
+            await asyncio.sleep(0.001)
+    
+    logger.debug(f"Enhanced Redis publish completed for batch {batch_id}: {published_count}/{len(events)} events")
+    return published_count
 
 
 async def _enhanced_database_persist(db: Session, events: List[EventData], batch_id: str) -> int:
