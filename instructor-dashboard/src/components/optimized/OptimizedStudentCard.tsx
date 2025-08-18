@@ -233,7 +233,7 @@ OptimizedStudentCard.displayName = 'OptimizedStudentCard';
 function getPriorityColor(priority: 'high' | 'medium' | 'low'): string {
   switch (priority) {
     case 'high': return '#ff5722';
-    case 'medium': return '#ff9800';
+    case 'medium': return '#ffc107';
     case 'low': return '#4caf50';
     default: return '#9e9e9e';
   }

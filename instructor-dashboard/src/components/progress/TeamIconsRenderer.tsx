@@ -141,10 +141,10 @@ export const TeamIconsRenderer: React.FC<TeamIconsRendererProps> = ({
     
     if (screenWidth <= 480) { // スマホ
       return {
-        baseIconSize: 28,  // 48 → 28 (42%削減)
-        baseFontSize: 9,   // 12 → 9
-        badgeSize: 16,     // 20 → 16
-        badgeFontSize: 8   // 10 → 8
+        baseIconSize: 32,  // 28 → 32 (視認性向上)
+        baseFontSize: 10,  // 9 → 10
+        badgeSize: 18,     // 16 → 18
+        badgeFontSize: 9   // 8 → 9
       };
     } else if (screenWidth <= 768) { // タブレット
       return {
@@ -180,8 +180,8 @@ export const TeamIconsRenderer: React.FC<TeamIconsRendererProps> = ({
     const combinedZoom = effectiveZoom / Math.max(1, browserZoomLevel - 0.2);
     
     // 最小サイズ制限を強化（スマホでは特に小さくなりすぎないよう調整）
-    const minIconSize = screenWidth <= 480 ? 24 : 28; // スマホ用最小サイズ
-    const minFontSize = screenWidth <= 480 ? 8 : 9;   // スマホ用最小フォントサイズ
+    const minIconSize = screenWidth <= 480 ? 28 : 32; // スマホ用最小サイズ向上
+    const minFontSize = screenWidth <= 480 ? 9 : 10;  // スマホ用最小フォントサイズ向上
     
     const zoomAdjustedIconSize = Math.max(minIconSize, baseIconSize * combinedZoom);
     const zoomAdjustedFontSize = Math.max(minFontSize, baseFontSize * combinedZoom);

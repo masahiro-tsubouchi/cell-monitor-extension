@@ -151,7 +151,7 @@ export const CriticalAlertBar: React.FC<CriticalAlertBarProps> = memo(({
       {/* エラー発生アラート */}
       {errorStudents.length > 0 && (
         <Alert severity="warning" sx={{ 
-          backgroundColor: '#ff9800',
+          backgroundColor: '#ffc107',
           color: 'white',
           '& .MuiAlert-icon': { color: 'white' }
         }}>

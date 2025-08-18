@@ -40,7 +40,7 @@ const getTeamStatusColor = (status: TeamData['status']) => {
   switch (status) {
     case 'help': return { color: 'error', bgcolor: '#ffebee' };
     case 'active': return { color: 'success', bgcolor: '#e8f5e8' };
-    case 'error': return { color: 'warning', bgcolor: '#fff3e0' };
+    case 'error': return { color: 'warning', bgcolor: '#fffbf0' };
     case 'idle': return { color: 'default', bgcolor: '#f5f5f5' };
     default: return { color: 'default', bgcolor: '#f5f5f5' };
   }

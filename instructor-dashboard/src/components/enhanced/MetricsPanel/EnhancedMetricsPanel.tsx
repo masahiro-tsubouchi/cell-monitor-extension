@@ -191,108 +191,13 @@ export const EnhancedMetricsPanel: React.FC<EnhancedMetricsPanelProps> = memo(({
         <CriticalMetricCard
           title="エラー発生"
           count={errorCount}
-          color="#ff9800"
+          color="#ffc107"
           icon={<ErrorIcon />}
           urgent={errorCount > 5}
           trend={0} // TODO: 前回との差分を計算
         />
       </Box>
 
-      {/* Activity Overview - 概要エリア */}
-      <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'text.primary' }}>
-        📊 活動概要
-      </Typography>
-      
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
-        <Card sx={{ textAlign: 'center', p: 2 }}>
-          <PeopleIcon sx={{ fontSize: 40, color: '#1976d2', mb: 1 }} />
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            {totalStudents}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            総受講生数
-          </Typography>
-        </Card>
-
-        <Card sx={{ textAlign: 'center', p: 2 }}>
-          <CheckCircleIcon sx={{ fontSize: 40, color: '#4caf50', mb: 1 }} />
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            {activeCount}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            アクティブ
-          </Typography>
-        </Card>
-
-        <Card sx={{ textAlign: 'center', p: 2 }}>
-          <CodeIcon sx={{ fontSize: 40, color: '#9c27b0', mb: 1 }} />
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            {totalExecutions}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            総実行回数
-          </Typography>
-        </Card>
-
-        <Card sx={{ textAlign: 'center', p: 2 }}>
-          <ScheduleIcon sx={{ fontSize: 40, color: '#607d8b', mb: 1 }} />
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            {averageExecutions}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            平均実行回数
-          </Typography>
-        </Card>
-      </Box>
-
-      {/* 活動率の可視化 */}
-      <Card sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-          📈 活動率ダッシュボード
-        </Typography>
-        
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body2">アクティブ率</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-              {totalStudents > 0 ? Math.round((activeCount / totalStudents) * 100) : 0}%
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={totalStudents > 0 ? (activeCount / totalStudents) * 100 : 0}
-            sx={{
-              height: 8,
-              borderRadius: 4,
-              '& .MuiLinearProgress-bar': {
-                backgroundColor: '#4caf50'
-              }
-            }}
-          />
-        </Box>
-
-        {helpCount > 0 && (
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2" color="error">ヘルプ要請率</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                {Math.round((helpCount / totalStudents) * 100)}%
-              </Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={(helpCount / totalStudents) * 100}
-              sx={{
-                height: 8,
-                borderRadius: 4,
-                '& .MuiLinearProgress-bar': {
-                  backgroundColor: '#ff5722'
-                }
-              }}
-            />
-          </Box>
-        )}
-      </Card>
 
       {/* 最終更新情報 */}
       {lastUpdated && (

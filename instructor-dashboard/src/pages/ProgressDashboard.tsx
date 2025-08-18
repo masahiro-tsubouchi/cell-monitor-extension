@@ -324,11 +324,6 @@ export const ProgressDashboard: React.FC = () => {
         onOpenAdmin={handleOpenAdmin}
       />
 
-      {/* パフォーマンス統計 */}
-      <PerformanceStats
-        workerStats={workerProcessing}
-        renderStats={renderStats}
-      />
 
       {/* Phase 1.1: 緊急アラートシステム */}
       <CriticalAlertBar 
@@ -363,7 +358,6 @@ export const ProgressDashboard: React.FC = () => {
       </VisibilityBasedLoader>
 
       <Divider sx={{ my: 3 }} />
-
 
       {/* 受講生進捗表示 */}
       <Box sx={{ mb: 4 }}>

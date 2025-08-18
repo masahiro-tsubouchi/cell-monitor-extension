@@ -92,16 +92,16 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({
       {
         label: 'エラー数',
         data: data.map(point => point.errorCount),
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        borderColor: 'rgb(255, 193, 7)',
+        backgroundColor: 'rgba(255, 193, 7, 0.2)',
         tension: 0.3,
         fill: false,
       },
       {
         label: 'ヘルプ要求数',
         data: data.map(point => point.helpCount),
-        borderColor: 'rgb(255, 159, 64)',
-        backgroundColor: 'rgba(255, 159, 64, 0.2)',
+        borderColor: 'rgb(255, 87, 34)',
+        backgroundColor: 'rgba(255, 87, 34, 0.2)',
         tension: 0.3,
         fill: false,
       }
@@ -212,7 +212,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({
           </Box>
 
           <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h6" color="error">
+            <Typography variant="h6" sx={{ color: '#ffc107' }}>
               {data.reduce((sum, point) => sum + point.errorCount, 0)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -221,7 +221,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({
           </Box>
 
           <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h6" color="warning.main">
+            <Typography variant="h6" sx={{ color: '#ff5722' }}>
               {data.reduce((sum, point) => sum + point.helpCount, 0)}
             </Typography>
             <Typography variant="caption" color="text.secondary">

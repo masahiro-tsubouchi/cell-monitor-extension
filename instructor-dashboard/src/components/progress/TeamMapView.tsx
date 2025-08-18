@@ -492,7 +492,7 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
       {/* MAP表示エリア */}
       <Card sx={{
         position: 'relative',
-        maxHeight: '400px',
+        maxHeight: '350px',
         overflow: 'hidden',
         border: isEditMode ? '2px dashed #1976d2' : 'none'
       }}>
@@ -502,8 +502,8 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
             position: 'relative',
             width: '100%',
             aspectRatio: '16 / 9',
-            minHeight: 300,
-            maxHeight: 500,
+            minHeight: 250,
+            maxHeight: 350,
             cursor: isEditMode ? 'crosshair' : 'pointer',
             display: 'grid',
             placeItems: 'stretch',
@@ -527,7 +527,7 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
                 left: 0,
                 width: '100%',
                 height: '100%',
-                objectFit: 'contain',
+                objectFit: 'cover',
                 display: 'block',
                 zIndex: 1
               }}
