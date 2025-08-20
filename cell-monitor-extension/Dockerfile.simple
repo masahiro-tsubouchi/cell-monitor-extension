@@ -1,0 +1,49 @@
+# 環境変数でPythonバージョンを指定可能
+ARG PYTHON_VERSION=3.12-slim
+FROM python:${PYTHON_VERSION}
+
+# 作業ディレクトリの設定
+WORKDIR /notebooks
+
+# システム依存関係のインストール（curlのみ - ヘルスチェック用）
+RUN apt-get update && apt-get install -y curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Python環境の最適化
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# JupyterLabの基本インストール
+RUN pip install --no-cache-dir jupyterlab
+
+# 非rootユーザーでの実行（セキュリティ強化）
+RUN useradd --create-home --shell /bin/bash jupyter && \
+    chown -R jupyter:jupyter /notebooks
+USER jupyter
+
+# CSP設定をコピー（FastAPIサーバー接続許可）
+USER root
+RUN mkdir -p /etc/jupyter
+COPY jupyter_server_config.py /etc/jupyter/
+
+# ポート公開（環境変数で制御可能）
+ARG JUPYTERLAB_PORT=8888
+EXPOSE ${JUPYTERLAB_PORT}
+
+# ヘルスチェック設定
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${JUPYTERLAB_PORT}/lab || exit 1
+
+# 環境変数でJupyterトークンを制御可能
+ARG JUPYTER_TOKEN=easy
+ENV JUPYTER_TOKEN=${JUPYTER_TOKEN}
+
+# 拡張機能ビルド成果物の配置用ディレクトリを作成
+RUN mkdir -p /app/dist && chown jupyter:jupyter /app/dist
+
+# JupyterLabの起動（環境変数でトークンを制御）
+USER jupyter
+CMD ["sh", "-c", "if [ -z \"$JUPYTER_TOKEN\" ]; then jupyter lab --ip=0.0.0.0 --no-browser --ServerApp.token=''; else jupyter lab --ip=0.0.0.0 --no-browser --ServerApp.token=\"$JUPYTER_TOKEN\"; fi"]
