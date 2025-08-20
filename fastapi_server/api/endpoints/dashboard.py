@@ -29,9 +29,16 @@ async def get_dashboard_overview(
             # Get latest session info (safely handle None case)
             latest_session = student_data.get("latest_session") or {}
 
-            # Determine status - help takes priority
+            # Get consecutive error information for the student
+            consecutive_error_info = crud_execution.get_student_consecutive_error_info(
+                db, student_data["id"]
+            )
+
+            # Determine status - help takes priority, then significant errors
             if student_data.get("is_requesting_help", False):
                 status = "help"
+            elif consecutive_error_info.get("has_significant_error", False):
+                status = "significant_error"
             else:
                 status = determine_student_status(latest_session)
 
@@ -52,19 +59,27 @@ async def get_dashboard_overview(
                     "isRequestingHelp": student_data.get("is_requesting_help", False),
                     "cellExecutions": latest_session.get("cell_executions", 0),
                     "errorCount": latest_session.get("error_count", 0),
+                    # 連続エラー検出情報を追加
+                    "consecutiveErrorCount": consecutive_error_info.get("consecutive_count", 0),
+                    "hasSignificantError": consecutive_error_info.get("has_significant_error", False),
+                    "significantErrorCells": consecutive_error_info.get("error_cells", []),
                 }
             )
 
         # Calculate metrics
         total_students = len(students)
         total_active = len([s for s in students if s["status"] == "active"])
-        error_count = len([s for s in students if s["status"] == "error"])
+        # 有意なエラーのみカウント（連続エラー検出対応）
+        significant_error_count = len([s for s in students if s["status"] == "significant_error"])
+        # 従来のエラーカウント（後方互換性のため）
+        error_count = len([s for s in students if s["status"] in ["error", "significant_error"]])
         total_executions = sum(s["cellExecutions"] for s in students)
 
         metrics = {
             "totalStudents": total_students,
             "totalActive": total_active,
             "errorCount": error_count,
+            "significantErrorCount": significant_error_count,  # 連続エラー検出対応
             "totalExecutions": total_executions,
             "helpCount": 0,  # Will be updated after getting chart data
         }
@@ -256,6 +271,78 @@ async def dismiss_help_request(email: str, db: Session = Depends(get_db)):
         print(f"Dismiss help error: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to dismiss help request: {str(e)}"
+        )
+
+
+@router.post("/students/{email}/resolve-error")
+async def resolve_student_error(email: str, db: Session = Depends(get_db)):
+    """
+    Resolve consecutive error status for a specific student
+    """
+    try:
+        # Get student from database
+        student = crud_student.get_student_by_email(db, email)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Reset consecutive error status
+        result = crud_execution.resolve_consecutive_errors(db, student.id)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to reset error status")
+        
+        # Broadcast WebSocket notification to instructors
+        try:
+            from core.websocket_manager import websocket_manager
+            await websocket_manager.broadcast_to_room(
+                "instructors",
+                {
+                    "type": "student_error_resolved",
+                    "data": {
+                        "emailAddress": email,
+                        "resolvedAt": datetime.utcnow().isoformat(),
+                        "resolvedBy": "instructor"
+                    }
+                }
+            )
+        except Exception as e:
+            print(f"Failed to broadcast error resolution: {e}")
+        
+        # Record resolution event in InfluxDB
+        try:
+            from db.influxdb_client import write_api
+            from influxdb_client import Point
+            from core.config import settings
+            import uuid
+            
+            error_resolved_point = (
+                Point("student_progress")
+                .tag("emailAddress", email)
+                .tag("event", "error_resolved")
+                .field("eventId", str(uuid.uuid4()))
+                .field("userName", email.split("@")[0])
+                .field("sessionId", f"dashboard-resolve-{email}")
+                .field("resolvedBy", "instructor")
+                .field("success", True)
+                .time(datetime.utcnow())
+            )
+            
+            write_api.write(bucket=settings.INFLUXDB_BUCKET, record=error_resolved_point)
+            print(f"Error resolution event recorded for email {email}")
+        except Exception as e:
+            print(f"Failed to record error_resolved event: {e}")
+        
+        return {
+            "success": True,
+            "message": f"Error status resolved for student {email}",
+            "emailAddress": email,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Resolve error error: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to resolve error status: {str(e)}"
         )
 
 

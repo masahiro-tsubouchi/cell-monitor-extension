@@ -175,6 +175,10 @@ class EventRouter:
 async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
     """
     セル実行イベントを処理し、LMS関連テーブルにデータを永続化する
+    
+    *** 連続エラー検出機能統合版 ***
+    同一セルで連続エラーが設定閾値（デフォルト3回）以上発生した場合のみ
+    有意なエラーとして記録し、ダッシュボードに通知します。
 
     Args:
         event_data: イベントデータを含む辞書
@@ -204,8 +208,8 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
     # セッションの作成または取得（学生の最新アクティブセッション）
     session = crud_student.get_or_create_active_session(db, student_id=student.id)
 
-    # 3. セル実行履歴を作成
-    crud_execution.create_cell_execution(
+    # 3. セル実行履歴を作成（連続エラー検出機能統合済み）
+    execution = crud_execution.create_cell_execution(
         db=db,
         event=event,
         student_id=student.id,
@@ -214,7 +218,8 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
         session_id=session.id,
     )
     logger.info(
-        f"PostgreSQLへの実行履歴保存完了: student_id={student.id}, notebook_id={notebook.id}, cell_id={cell.id}"
+        f"PostgreSQLへの実行履歴保存完了: student_id={student.id}, notebook_id={notebook.id}, cell_id={cell.id}, "
+        f"consecutive_errors={execution.consecutive_error_count}, significant={execution.is_significant_error}"
     )
 
     # 4. InfluxDBに書き込むためのイベントデータを作成
@@ -234,13 +239,30 @@ async def handle_cell_execution(event_data: Dict[str, Any], db: Session):
     logger.info(f"InfluxDBへの書き込み完了: {event.emailAddress}, {event.eventType}")
 
     # 6. WebSocket経由でダッシュボードにリアルタイム更新を送信
-    await notify_dashboard_update(event, student)
+    # 🎯 重要: 有意なエラーの場合のみダッシュボードに通知
+    if execution.is_significant_error:
+        logger.warning(
+            f"🚨 有意なエラー検出: student={event.emailAddress}, cell={event.cellId}, "
+            f"consecutive_count={execution.consecutive_error_count}"
+        )
+        # 有意なエラーの場合は特別な通知を送信
+        await notify_dashboard_update(event, student, is_significant_error=True)
+    else:
+        # 通常の更新通知
+        await notify_dashboard_update(event, student)
 
     return True
 
 
-async def notify_dashboard_update(event: EventData, student):
-    """ダッシュボード向けWebSocket通知を送信"""
+async def notify_dashboard_update(event: EventData, student, is_significant_error: bool = False):
+    """
+    ダッシュボード向けWebSocket通知を送信
+    
+    Args:
+        event: イベントデータ
+        student: 学生情報
+        is_significant_error: 有意なエラーの場合 True
+    """
     try:
         from db.redis_client import get_redis_client
         import json
@@ -257,12 +279,24 @@ async def notify_dashboard_update(event: EventData, student):
             "cellExecutions": 1,  # インクリメント用
             "errorCount": 1 if event.hasError else 0,
             "timestamp": event.eventTime,
+            # 🎯 新機能: 有意なエラーフラグ
+            "isSignificantError": is_significant_error,
         }
+
+        # 有意なエラーの場合は特別な通知タイプを設定
+        if is_significant_error:
+            dashboard_update["type"] = "significant_error_alert"
+            dashboard_update["alertLevel"] = "warning"
+            dashboard_update["message"] = f"連続エラーが発生しています: {event.cellId}"
 
         # Redis Pub/Sub経由でダッシュボードに通知
         redis_client = await get_redis_client()
         await redis_client.publish("dashboard_updates", json.dumps(dashboard_update))
-        logger.info(f"ダッシュボード更新通知送信: {event.emailAddress}")
+        
+        if is_significant_error:
+            logger.warning(f"🚨 有意なエラー通知送信: {event.emailAddress}")
+        else:
+            logger.info(f"ダッシュボード更新通知送信: {event.emailAddress}")
 
     except Exception as e:
         logger.error(f"ダッシュボード更新通知エラー: {e}")

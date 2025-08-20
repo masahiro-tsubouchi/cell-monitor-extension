@@ -3,8 +3,8 @@
  * Phase 1.2: 強化メトリクスパネル
  * 
  * 機能:
- * - 3階層の情報表示で重要度を視覚的に区別
- * - 緊急レベル（ヘルプ・エラー）を最上部に大きく表示
+ * - クラス全体の統計情報表示
+ * - 緊急監視はCriticalAlertBarに統合済み
  * - トレンド表示で状況変化を一目で把握
  */
 
@@ -14,18 +14,13 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
-  Chip,
-  LinearProgress
+  Chip
 } from '@mui/material';
 import {
-  Help as HelpIcon,
-  Error as ErrorIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   People as PeopleIcon,
   Code as CodeIcon,
-  Schedule as ScheduleIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { DashboardMetrics, StudentActivity } from '../../../services/dashboardAPI';
@@ -161,9 +156,7 @@ export const EnhancedMetricsPanel: React.FC<EnhancedMetricsPanelProps> = memo(({
   students,
   lastUpdated
 }) => {
-  // 学生の状態別集計
-  const helpCount = students.filter(s => s.status === 'help').length;
-  const errorCount = students.filter(s => s.status === 'error').length;
+  // 学生の状態別集計 (緊急監視除く)
   const activeCount = students.filter(s => s.status === 'active').length;
   const totalStudents = students.length;
 
@@ -173,28 +166,37 @@ export const EnhancedMetricsPanel: React.FC<EnhancedMetricsPanelProps> = memo(({
 
   return (
     <Box>
-      {/* Critical Metrics - 最重要エリア */}
+      {/* クラス統計情報 - 緊急監視はCriticalAlertBarに移行 */}
       <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold', color: 'text.primary' }}>
-        🔴 緊急監視
+        📊 クラス統計
       </Typography>
       
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 3, mb: 4 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 3, mb: 4 }}>
         <CriticalMetricCard
-          title="ヘルプ要請"
-          count={helpCount}
-          color="#ff5722"
-          icon={<HelpIcon />}
-          urgent={helpCount > 0}
-          trend={0} // TODO: 前回との差分を計算
+          title="総学生数"
+          count={totalStudents}
+          color="#2196f3"
+          icon={<PeopleIcon />}
+          urgent={false}
+          trend={0}
         />
         
         <CriticalMetricCard
-          title="エラー発生"
-          count={errorCount}
-          color="#ffc107"
-          icon={<ErrorIcon />}
-          urgent={errorCount > 5}
-          trend={0} // TODO: 前回との差分を計算
+          title="アクティブ"
+          count={activeCount}
+          color="#4caf50"
+          icon={<CheckCircleIcon />}
+          urgent={false}
+          trend={0}
+        />
+        
+        <CriticalMetricCard
+          title="平均実行回数"
+          count={averageExecutions}
+          color="#9c27b0"
+          icon={<CodeIcon />}
+          urgent={false}
+          trend={0}
         />
       </Box>
 

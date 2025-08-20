@@ -42,7 +42,11 @@ export class DeltaCalculator {
     teamName: 'normal',
     currentNotebook: 'important',
     lastActivity: 'important',
-    cellExecutions: 'normal'
+    cellExecutions: 'normal',
+    // 連続エラー検出機能追加フィールド
+    consecutiveErrorCount: 'critical',
+    hasSignificantError: 'critical',
+    significantErrorCells: 'critical'
   };
 
   /**

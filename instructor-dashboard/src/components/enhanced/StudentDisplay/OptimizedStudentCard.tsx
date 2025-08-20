@@ -69,26 +69,33 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     label: 'ヘルプ要請',
     priority: 1
   },
+  significant_error: {
+    icon: <ErrorIcon />,
+    color: '#000',
+    bgColor: '#ffeb3b',  // 黄色で連続エラーを表現
+    label: '連続エラー',
+    priority: 2
+  },
   error: {
     icon: <ErrorIcon />,
     color: '#fff', 
     bgColor: '#ff9800',
     label: 'エラー発生',
-    priority: 2
+    priority: 3
   },
   active: {
     icon: <ActiveIcon />,
     color: '#fff',
     bgColor: '#4caf50', 
     label: 'アクティブ',
-    priority: 3
+    priority: 4
   },
-  inactive: {
+  idle: {
     icon: <InactiveIcon />,
     color: '#666',
     bgColor: '#f5f5f5',
-    label: '非アクティブ',
-    priority: 4
+    label: 'アイドル',
+    priority: 5
   }
 };
 

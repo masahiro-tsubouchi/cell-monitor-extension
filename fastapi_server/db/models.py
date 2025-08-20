@@ -148,6 +148,10 @@ class CellExecution(Base):
     code_content = Column(Text, nullable=True)  # 実行されたセルのコード内容
     cell_index = Column(Integer, nullable=True)  # ノートブック内でのセル位置
     cell_type = Column(String, nullable=True)  # セルの種類 (code, markdown, etc.)
+    
+    # 連続エラー検出用フィールド
+    consecutive_error_count = Column(Integer, default=0)
+    is_significant_error = Column(Boolean, default=False)
 
     # リレーションシップ
     notebook = relationship("Notebook")
@@ -303,3 +307,17 @@ class InstructorStatusHistory(Base):
 
     # リレーションシップ
     instructor = relationship("Instructor", back_populates="status_history")
+
+
+class SystemSetting(Base):
+    """システム設定テーブル - 設定値の動的管理"""
+    __tablename__ = "system_settings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    setting_key = Column(String, unique=True, nullable=False, index=True)
+    setting_value = Column(Text, nullable=False)
+    setting_type = Column(String, nullable=False)  # int, str, bool, json
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

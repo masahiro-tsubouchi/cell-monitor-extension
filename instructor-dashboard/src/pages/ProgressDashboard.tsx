@@ -37,12 +37,12 @@ import {
   VisibilityBasedLoader,
   SkeletonLoader
 } from '../components/lazy/LazyComponentLoader';
-import { MetricsPanel } from '../components/progress/MetricsPanel';
+// import { MetricsPanel } from '../components/progress/MetricsPanel'; // 未使用
 import { EnhancedMetricsPanel } from '../components/enhanced/MetricsPanel';
 import { CriticalAlertBar } from '../components/enhanced/AlertSystem';
 import { KeyboardShortcutsHelp } from '../components/enhanced/KeyboardHelp';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { StudentActivity } from '../services/dashboardAPI';
+import { StudentActivity, dashboardAPI } from '../services/dashboardAPI';
 import { useNavigate } from 'react-router-dom';
 import {
   getInstructorSettings,
@@ -180,6 +180,7 @@ export const ProgressDashboard: React.FC = () => {
   });
 
   const [expandedTeamsCount, setExpandedTeamsCount] = useState<number>(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showFilter, setShowFilter] = useState<boolean>(false);
 
   // Store から状態取得
@@ -202,6 +203,7 @@ export const ProgressDashboard: React.FC = () => {
   } = useProgressDashboardStore();
 
   // Worker 処理フック
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const workerProcessing = useWorkerProcessing();
 
 
@@ -277,6 +279,38 @@ export const ProgressDashboard: React.FC = () => {
     }, 100);
   }, [handleStudentClick]);
 
+  // エラー学生クリックハンドラー
+  const handleErrorStudentClick = useCallback((student: StudentActivity) => {
+    selectStudent(student);
+    updateSelectedStudent(student.emailAddress);
+  }, [selectStudent]);
+
+  // エラー解除ハンドラー
+  const handleResolveError = useCallback(async (emailAddress: string) => {
+    try {
+      await dashboardAPI.resolveStudentError(emailAddress);
+      selectStudent(null);
+      // データ再取得
+      refreshData();
+    } catch (error) {
+      console.error('エラー解除に失敗:', error);
+      // TODO: エラー表示機能を後で追加
+    }
+  }, [selectStudent, refreshData]);
+
+  // ヘルプ解除ハンドラー
+  const handleDismissHelp = useCallback(async (emailAddress: string) => {
+    try {
+      await dashboardAPI.dismissHelpRequest(emailAddress);
+      selectStudent(null);
+      // データ再取得
+      refreshData();
+    } catch (error) {
+      console.error('ヘルプ解除に失敗:', error);
+      // TODO: エラー表示機能を後で追加
+    }
+  }, [selectStudent, refreshData]);
+
   const handleToggleFilter = useCallback(() => {
     setShowFilter(prev => !prev);
   }, []);
@@ -293,6 +327,7 @@ export const ProgressDashboard: React.FC = () => {
   }, [selectStudent]);
 
   // Phase 1.3: キーボードショートカット設定
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { shortcuts } = useKeyboardShortcuts({
     students,
     onHelpFocus: handleHelpFocus,
@@ -303,6 +338,7 @@ export const ProgressDashboard: React.FC = () => {
   });
 
   // レンダリング統計（開発時のみ）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const renderStats = useMemo(() => ({
     optimizedComponents: 5, // OptimizedStudentCard, VirtualizedStudentList, etc.
     lazyComponents: 4 // LazyActivityChart, LazyTeamMapView, etc.
@@ -329,6 +365,7 @@ export const ProgressDashboard: React.FC = () => {
       <CriticalAlertBar 
         students={students}
         onHelpStudentClick={handleStudentClick}
+        onErrorStudentClick={handleErrorStudentClick}
         soundAlertEnabled={true}
       />
 
@@ -339,27 +376,7 @@ export const ProgressDashboard: React.FC = () => {
         </Alert>
       )}
 
-      {/* Phase 1.2: 強化メトリクスパネル */}
-      <Box sx={{ mb: 4 }}>
-        <EnhancedMetricsPanel 
-          metrics={metrics} 
-          students={students}
-          lastUpdated={lastUpdated} 
-        />
-      </Box>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* 活動チャート（遅延読み込み） */}
-      <VisibilityBasedLoader fallback={<SkeletonLoader type="chart" />}>
-        <Box sx={{ mb: 4 }}>
-          <OptimizedActivityChart data={activityChart} timeRange="1h" />
-        </Box>
-      </VisibilityBasedLoader>
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* 受講生進捗表示 */}
+      {/* 受講生進捗表示 - 最優先表示 */}
       <Box sx={{ mb: 4 }}>
         <ViewModeControls
           viewMode={viewMode}
@@ -403,11 +420,33 @@ export const ProgressDashboard: React.FC = () => {
         )}
       </Box>
 
+      <Divider sx={{ my: 3 }} />
+
+      {/* 学習活動推移（遅延読み込み） */}
+      <VisibilityBasedLoader fallback={<SkeletonLoader type="chart" />}>
+        <Box sx={{ mb: 4 }}>
+          <OptimizedActivityChart data={activityChart} timeRange="1h" />
+        </Box>
+      </VisibilityBasedLoader>
+
+      <Divider sx={{ my: 3 }} />
+
+      {/* クラス統計 */}
+      <Box sx={{ mb: 4 }}>
+        <EnhancedMetricsPanel 
+          metrics={metrics} 
+          students={students}
+          lastUpdated={lastUpdated} 
+        />
+      </Box>
+
       {/* 受講生詳細モーダル（遅延読み込み） */}
       <OptimizedStudentDetailModal
         student={selectedStudent}
         open={!!selectedStudent}
         onClose={() => selectStudent(null)}
+        onDismissHelp={handleDismissHelp}
+        onResolveError={handleResolveError}
       />
 
       {/* Phase 1.3: キーボードショートカットヘルプ */}

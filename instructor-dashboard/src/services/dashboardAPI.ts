@@ -9,16 +9,25 @@ export interface StudentActivity {
   teamName?: string;  // チーム名
   currentNotebook: string;
   lastActivity: string;
-  status: 'active' | 'idle' | 'error' | 'help';
+  status: 'active' | 'idle' | 'error' | 'help' | 'significant_error';  // 連続エラー対応
   isRequestingHelp?: boolean;
   cellExecutions: number;
   errorCount: number;
+  // 連続エラー検出機能追加
+  consecutiveErrorCount?: number;
+  hasSignificantError?: boolean;
+  significantErrorCells?: Array<{
+    cell_id: number;
+    consecutive_count: number;
+    last_error_time: string;
+  }>;
 }
 
 export interface DashboardMetrics {
   totalActive: number;
   totalStudents: number;
   errorCount: number;
+  significantErrorCount?: number;  // 連続エラー検出対応
   totalExecutions: number;
   helpCount: number;
 }
@@ -135,6 +144,21 @@ export const dashboardAPI = {
     } catch (error: any) {
       console.error('Failed to dismiss help request:', error);
       throw new Error('対応完了の記録に失敗しました');
+    }
+  },
+
+  /**
+   * Resolve consecutive error status for a specific student
+   */
+  async resolveStudentError(emailAddress: string) {
+    try {
+      console.log('Resolving error status for student:', emailAddress);
+      const response = await api.post(`/dashboard/students/${encodeURIComponent(emailAddress)}/resolve-error`);
+      console.log('Error status resolved successfully:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to resolve error status:', error);
+      throw new Error('エラー状態の解除に失敗しました');
     }
   },
 

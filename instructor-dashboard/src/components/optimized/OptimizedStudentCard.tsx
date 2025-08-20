@@ -78,7 +78,7 @@ export const OptimizedStudentCard: React.FC<OptimizedStudentCardProps> = memo(({
     executionText: `${studentData.executionCount}回実行`,
     errorRate: calculateErrorRate(studentData.original),
     teamDisplayName: studentData.teamName === '未割り当て' ? '👤 個人' : `👥 ${studentData.teamName}`
-  }), [studentData.original, studentData.executionCount, studentData.teamName]);
+  }), [studentData.original, studentData.executionCount, studentData.teamName, studentData.isHelpRequesting]);
 
   const handleClick = () => {
     onClick?.(studentData.original);
@@ -250,6 +250,8 @@ function getStatusText(status: string, isHelpRequesting: boolean): string {
   
   switch (status) {
     case 'active': return '🟢 アクティブ';
+    case 'significant_error': return '🚨 連続エラー';
+    case 'error': return '⚠️ エラー発生';
     case 'inactive': return '🔴 非アクティブ';
     case 'idle': return '🟡 待機中';
     default: return '⚪ 状態不明';

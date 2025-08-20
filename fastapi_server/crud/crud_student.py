@@ -52,6 +52,7 @@ def get_active_students_with_sessions(db: Session) -> List[Dict[str, Any]]:
     # Get students with their session statistics aggregated
     students_with_sessions = (
         db.query(
+            models.Student.id,  # IDを追加
             models.Student.email,
             models.Student.name,
             models.Team.team_name,
@@ -103,6 +104,7 @@ def get_active_students_with_sessions(db: Session) -> List[Dict[str, Any]]:
         is_requesting_help = check_recent_help_status(row.email, help_threshold)
 
         student_data = {
+            "id": row.id,  # IDを追加
             "email": row.email,
             "name": row.name
             or row.email.split("@")[0],  # Fallback to email prefix if name is None

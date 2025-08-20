@@ -23,7 +23,10 @@ import {
   Error as ErrorIcon,
   Schedule as ScheduleIcon,
   ExpandMore as ExpandMoreIcon,
-  PlayArrow as PlayIcon
+  PlayArrow as PlayIcon,
+  CheckCircle as CheckCircleIcon,
+  TaskAlt as TaskAltIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import { StudentActivity, dashboardAPI } from '../../services/dashboardAPI';
 
@@ -31,6 +34,8 @@ interface StudentDetailModalProps {
   student: StudentActivity | null;
   open: boolean;
   onClose: () => void;
+  onDismissHelp?: (emailAddress: string) => void;
+  onResolveError?: (emailAddress: string) => void;
 }
 
 // 実行履歴データ
@@ -89,6 +94,8 @@ const getStatusText = (status: StudentActivity['status']) => {
       return 'エラー';
     case 'help':
       return 'ヘルプ要求中';
+    case 'significant_error':
+      return '連続エラー発生中';
     default:
       return '不明';
   }
@@ -97,16 +104,23 @@ const getStatusText = (status: StudentActivity['status']) => {
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   student,
   open,
-  onClose
+  onClose,
+  onDismissHelp,
+  onResolveError
 }) => {
   const [studentDetail, setStudentDetail] = useState<StudentDetailData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filteredCellId, setFilteredCellId] = useState<number | null>(null);
+  const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set());
 
   // Load student detail data when modal opens
   useEffect(() => {
     if (open && student) {
       loadStudentDetail();
+      // Reset filter state when modal opens
+      setFilteredCellId(null);
+      setExpandedAccordions(new Set());
     }
   }, [open, student?.emailAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -137,6 +151,33 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   };
 
   const executionHistory = studentDetail?.recentExecutions || [];
+  
+  // フィルタリングされた実行履歴を取得
+  const displayExecutions = filteredCellId 
+    ? executionHistory.filter(exec => exec.cellId === filteredCellId)
+    : executionHistory;
+    
+  // フィルターリセット関数
+  const handleResetFilter = () => {
+    setFilteredCellId(null);
+    setExpandedAccordions(new Set());
+  };
+  
+  // Accordionの展開状態をチェック
+  const isAccordionExpanded = (executionId: string) => {
+    return expandedAccordions.has(executionId);
+  };
+  
+  // Accordionの展開/折りたたみをハンドル
+  const handleAccordionChange = (executionId: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+    const newExpanded = new Set(expandedAccordions);
+    if (isExpanded) {
+      newExpanded.add(executionId);
+    } else {
+      newExpanded.delete(executionId);
+    }
+    setExpandedAccordions(newExpanded);
+  };
 
   return (
     <Dialog
@@ -234,16 +275,133 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           </Box>
         </Box>
 
+        {/* 連続エラー詳細情報 */}
+        {student.status === 'significant_error' && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2, color: 'warning.dark', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <WarningIcon sx={{ color: 'warning.main' }} />
+                連続エラー詳細
+              </Typography>
+              
+              <Paper sx={{ p: 2, bgcolor: 'warning.50', border: '1px solid', borderColor: 'warning.200' }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 2, mb: 2 }}>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      連続エラー回数
+                    </Typography>
+                    <Typography variant="h6" color="warning.dark">
+                      {student.consecutiveErrorCount || 0}回
+                    </Typography>
+                  </Box>
+                  
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      エラー発生セル数
+                    </Typography>
+                    <Typography variant="h6" color="warning.dark">
+                      {student.significantErrorCells?.length || 0}個
+                    </Typography>
+                  </Box>
+                </Box>
+                
+                {/* エラーセル詳細リスト */}
+                {student.significantErrorCells && student.significantErrorCells.length > 0 && (
+                  <>
+                    <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                      エラー発生セル:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {student.significantErrorCells.map((cell, index) => (
+                        <Chip
+                          key={cell.cell_id}
+                          label={`セル${cell.cell_id}: ${cell.consecutive_count}回連続`}
+                          color={filteredCellId === cell.cell_id ? "primary" : "warning"}
+                          variant={filteredCellId === cell.cell_id ? "filled" : "outlined"}
+                          size="small"
+                          clickable
+                          onClick={() => {
+                            if (filteredCellId === cell.cell_id) {
+                              // 同じセルをクリックした場合はフィルターを解除
+                              setFilteredCellId(null);
+                              setExpandedAccordions(new Set());
+                            } else {
+                              // 異なるセルをクリックした場合はそのセルでフィルター
+                              setFilteredCellId(cell.cell_id);
+                              // 該当セルの実行履歴を自動展開するため、該当するAccordionのIDをセット
+                              const targetExecutions = (studentDetail?.recentExecutions || []).filter(
+                                exec => exec.cellId === cell.cell_id
+                              );
+                              const accordionIds = targetExecutions.map((exec, idx) => `${exec.cellId}-${idx}`);
+                              setExpandedAccordions(new Set(accordionIds));
+                            }
+                          }}
+                          sx={{ 
+                            fontFamily: 'monospace',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              transform: 'scale(1.05)',
+                              boxShadow: 2
+                            },
+                            transition: 'all 0.2s'
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      💡 同一セルで3回以上連続してエラーが発生しています
+                    </Typography>
+                  </>
+                )}
+              </Paper>
+            </Box>
+          </>
+        )}
+
         <Divider sx={{ my: 2 }} />
 
         {/* 実行履歴 */}
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          📋 最近の実行履歴
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h6">
+            📋 最近の実行履歴
+            {filteredCellId && (
+              <Typography component="span" variant="body2" sx={{ ml: 1, color: 'primary.main' }}>
+                (セル{filteredCellId}のみ表示中)
+              </Typography>
+            )}
+          </Typography>
+          
+          {filteredCellId && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleResetFilter}
+              sx={{ minWidth: 'auto' }}
+            >
+              フィルター解除
+            </Button>
+          )}
+        </Box>
 
         <Box sx={{ mb: 2 }}>
-          {executionHistory.map((execution, index) => (
-            <Accordion key={`${execution.cellId}-${index}`} sx={{ mb: 1 }}>
+          {displayExecutions.map((execution, index) => {
+            const accordionId = `${execution.cellId}-${index}`;
+            return (
+            <Accordion 
+              key={accordionId} 
+              expanded={isAccordionExpanded(accordionId)}
+              onChange={handleAccordionChange(accordionId)}
+              sx={{ 
+                mb: 1,
+                // フィルターされたセルの場合は色を変更
+                ...(filteredCellId === execution.cellId && {
+                  bgcolor: 'primary.50',
+                  border: '1px solid',
+                  borderColor: 'primary.200'
+                })
+              }}
+            >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -358,10 +516,11 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 ) : null}
               </AccordionDetails>
             </Accordion>
-          ))}
+            );
+          })}
         </Box>
 
-        {executionHistory.length === 0 && (
+        {displayExecutions.length === 0 && (
           <Box sx={{
             display: 'flex',
             justifyContent: 'center',
@@ -369,7 +528,12 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             minHeight: 100,
             color: 'text.secondary'
           }}>
-            <Typography>実行履歴がありません</Typography>
+            <Typography>
+              {filteredCellId 
+                ? `セル${filteredCellId}の実行履歴がありません` 
+                : '実行履歴がありません'
+              }
+            </Typography>
           </Box>
         )}
           </>
@@ -377,6 +541,28 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
       </DialogContent>
 
       <DialogActions>
+        {student?.status === 'help' && onDismissHelp && (
+          <Button 
+            onClick={() => onDismissHelp(student.emailAddress)} 
+            color="success"
+            variant="contained"
+            startIcon={<CheckCircleIcon />}
+          >
+            対応完了
+          </Button>
+        )}
+        
+        {student?.status === 'significant_error' && onResolveError && (
+          <Button 
+            onClick={() => onResolveError(student.emailAddress)}
+            color="warning"
+            variant="contained"
+            startIcon={<TaskAltIcon />}
+          >
+            エラー確認完了
+          </Button>
+        )}
+        
         <Button onClick={onClose} color="primary">
           閉じる
         </Button>
