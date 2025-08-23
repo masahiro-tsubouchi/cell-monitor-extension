@@ -126,8 +126,8 @@ export const useDragAndDrop = ({
       // 境界チェック
       let boundedPosition = boundPosition(position);
 
-      // グリッドスナップ適用
-      const snappedPosition = snapToGridPosition(boundedPosition, 10, snapToGrid);
+      // グリッドスナップ適用 (2.5%グリッドに合わせて調整)
+      const snappedPosition = snapToGridPosition(boundedPosition, 2.5, snapToGrid);
       boundedPosition = snappedPosition;
 
       console.log('ドラッグドロップ座標計算:', {
@@ -257,8 +257,8 @@ export const useDragAndDrop = ({
 
       let boundedPosition = boundPosition(position);
 
-      // グリッドスナップ適用
-      const snappedPosition = snapToGridPosition(boundedPosition, 10, snapToGrid);
+      // グリッドスナップ適用 (2.5%グリッドに合わせて調整)
+      const snappedPosition = snapToGridPosition(boundedPosition, 2.5, snapToGrid);
       boundedPosition = snappedPosition;
 
       console.log('タッチドロップ座標:', {

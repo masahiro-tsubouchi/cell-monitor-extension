@@ -13,7 +13,7 @@
   },
   "license": "MIT",
   "author": {
-    "name": "Developer"
+    "name": "TsubouchiMasahiro"
   },
   "files": [
     "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
@@ -81,7 +81,7 @@
     "outputDir": "cell_monitor/labextension",
     "schemaDir": "schema",
     "_build": {
-      "load": "static/remoteEntry.9d1d719c01e1ab4240d1.js",
+      "load": "static/remoteEntry.f3a6aff81abf995cb8ab.js",
       "extension": "./extension",
       "style": "./style"
     }

@@ -249,15 +249,6 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
     setError(error);
   }, []);
 
-  // 表示切り替え
-  const handleVisibilityToggle = () => {
-    if (mapData) {
-      setMapData({
-        ...mapData,
-        is_visible: !mapData.is_visible
-      });
-    }
-  };
 
   // MAP削除
   const handleDeleteMap = async () => {
@@ -373,7 +364,6 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
         onSuccess={handleSuccess}
         onError={handleError}
         onDataReload={loadMapData}
-        onVisibilityToggle={handleVisibilityToggle}
       />
     );
   }
@@ -387,16 +377,6 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={mapData?.is_visible || false}
-                onChange={handleVisibilityToggle}
-                size="small"
-              />
-            }
-            label="表示"
-          />
 
           {isEditMode && (
             <>
@@ -548,7 +528,7 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
                   linear-gradient(to right, rgba(25, 118, 210, 0.2) 1px, transparent 1px),
                   linear-gradient(to bottom, rgba(25, 118, 210, 0.2) 1px, transparent 1px)
                 `,
-                backgroundSize: '10% 10%',
+                backgroundSize: '2.5% 2.5%',
                 pointerEvents: 'none'
               }}
             />

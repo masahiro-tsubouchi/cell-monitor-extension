@@ -4,8 +4,6 @@ import {
   CardContent,
   Typography,
   Button,
-  Switch,
-  FormControlLabel,
   Box
 } from '@mui/material';
 import {
@@ -18,14 +16,12 @@ interface MapUploadAreaProps {
   onSuccess: (message: string) => void;
   onError: (error: string) => void;
   onDataReload: () => Promise<void>;
-  onVisibilityToggle: () => void;
 }
 
 export const MapUploadArea: React.FC<MapUploadAreaProps> = ({
   onSuccess,
   onError,
-  onDataReload,
-  onVisibilityToggle
+  onDataReload
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,16 +84,6 @@ export const MapUploadArea: React.FC<MapUploadAreaProps> = ({
             {upload.uploadProgress ? 'アップロード中...' : 'MAP画像を選択'}
           </Button>
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={false}
-                onChange={onVisibilityToggle}
-                disabled={upload.uploadProgress}
-              />
-            }
-            label="MAP表示"
-          />
         </Box>
 
         {/* 使用方法のヒント */}

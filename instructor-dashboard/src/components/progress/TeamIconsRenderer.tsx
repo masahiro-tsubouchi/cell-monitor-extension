@@ -81,7 +81,7 @@ export const TeamIconsRenderer: React.FC<TeamIconsRendererProps> = ({
         total: teamStudents.length,
         active: teamStudents.filter(s => s.status === 'active').length,
         help: teamStudents.filter(s => s.isRequestingHelp).length,
-        error: teamStudents.filter(s => s.status === 'error').length
+        error: teamStudents.filter(s => s.status === 'error' || s.status === 'significant_error').length
       });
     });
 
@@ -109,7 +109,7 @@ export const TeamIconsRenderer: React.FC<TeamIconsRendererProps> = ({
         total: teamStudents.length,
         active: teamStudents.filter(s => s.status === 'active').length,
         help: teamStudents.filter(s => s.isRequestingHelp).length,
-        error: teamStudents.filter(s => s.status === 'error').length
+        error: teamStudents.filter(s => s.status === 'error' || s.status === 'significant_error').length
       };
       const priority = getTeamPriority(stats);
       
@@ -190,9 +190,9 @@ export const TeamIconsRenderer: React.FC<TeamIconsRendererProps> = ({
 
     // ステータスカラーの決定
     const getStatusColor = () => {
-      if (stats.error > 0) return '#f44336'; // 赤
-      if (stats.help > 0) return '#ff9800';  // オレンジ
-      return '#4caf50'; // 緑
+      if (stats.help > 0) return '#f44336'; // 赤色 - HELP要請中
+      if (stats.error > 0) return '#ffc107'; // 黄色 - エラー発生中（通常+連続）
+      return '#4caf50'; // 緑色 - 正常
     };
 
     return (
@@ -260,7 +260,7 @@ export const TeamIconsRenderer: React.FC<TeamIconsRendererProps> = ({
               position: 'absolute',
               top: -5,
               right: -5,
-              backgroundColor: '#ff9800',
+              backgroundColor: '#f44336', // 赤色に統一
               color: 'white',
               borderRadius: '50%',
               width: zoomAdjustedBadgeSize,
@@ -274,6 +274,29 @@ export const TeamIconsRenderer: React.FC<TeamIconsRendererProps> = ({
             }}
           >
             {stats.help}
+          </Box>
+        )}
+
+        {/* エラー発生バッジ（ヘルプと同じ位置、ヘルプ優先） */}
+        {stats.error > 0 && stats.help === 0 && displayConfig.showBadges && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: -5,
+              right: -5,
+              backgroundColor: '#ffc107', // 黄色
+              color: 'white',
+              borderRadius: '50%',
+              width: zoomAdjustedBadgeSize,
+              height: zoomAdjustedBadgeSize,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: zoomAdjustedBadgeFontSize,
+              fontWeight: 'bold'
+            }}
+          >
+            {stats.error}
           </Box>
         )}
       </Box>

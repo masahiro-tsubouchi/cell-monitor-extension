@@ -8,6 +8,7 @@ import { Notification } from '@jupyterlab/apputils';
 import { IStudentProgressData, ICellExecutionData } from '../types/interfaces';
 import { createLogger, handleDataTransmissionError, handleNetworkError } from '../utils';
 import { SettingsManager } from '../core/SettingsManager';
+import { LoadDistributionService } from './LoadDistributionService';
 
 /**
  * データ送信サービス
@@ -15,18 +16,51 @@ import { SettingsManager } from '../core/SettingsManager';
  */
 export class DataTransmissionService {
   private settingsManager: SettingsManager;
+  private loadDistributionService: LoadDistributionService;
   private logger = createLogger('DataTransmissionService');
 
   constructor(settingsManager: SettingsManager) {
     this.settingsManager = settingsManager;
+    this.loadDistributionService = new LoadDistributionService(settingsManager);
   }
 
   /**
-   * 学習進捗データを送信
+   * 学習進捗データを送信（負荷分散機能付き）
    */
   async sendProgressData(data: IStudentProgressData[]): Promise<void> {
     if (data.length === 0) return;
 
+    // 負荷分散設定が有効な場合（デフォルトは有効）
+    let useLoadDistribution = true; // デフォルト値
+    
+    try {
+      const settings = this.settingsManager.getSettings();
+      if (settings && settings.get) {
+        const loadDistSetting = settings.get('useLoadDistribution');
+        if (loadDistSetting && loadDistSetting.composite !== undefined) {
+          useLoadDistribution = loadDistSetting.composite as boolean;
+        }
+      }
+    } catch (error) {
+      this.logger.debug('Failed to get load distribution setting, using default', error);
+    }
+    
+    if (useLoadDistribution) {
+      // 負荷分散付き送信
+      await this.loadDistributionService.sendWithLoadDistribution(
+        data, 
+        (data) => this.sendProgressDataInternal(data)
+      );
+    } else {
+      // 従来通りの送信
+      await this.sendProgressDataInternal(data);
+    }
+  }
+
+  /**
+   * 内部送信機能（既存ロジック）
+   */
+  private async sendProgressDataInternal(data: IStudentProgressData[]): Promise<void> {
     const { showNotifications } = this.settingsManager.getNotificationSettings();
 
     this.logger.debug('Sending progress data', {
@@ -64,7 +98,7 @@ export class DataTransmissionService {
           handleNetworkError(
             errorObj,
             `Progress data transmission - retry ${retries}/${maxRetries}`,
-            undefined // Let the error handler decide the message
+            undefined
           );
           // Wait before retrying (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries - 1)));

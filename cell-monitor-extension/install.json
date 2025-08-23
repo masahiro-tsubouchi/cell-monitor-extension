@@ -1,0 +1,4 @@
+{
+  "packageName": "cell_monitor",
+  "uninstallInstructions": "Use your Python package manager (pip, conda, etc.) to uninstall the package cell_monitor"
+}

@@ -429,16 +429,6 @@ export const ProgressDashboard: React.FC = () => {
         </Box>
       </VisibilityBasedLoader>
 
-      <Divider sx={{ my: 3 }} />
-
-      {/* クラス統計 */}
-      <Box sx={{ mb: 4 }}>
-        <EnhancedMetricsPanel 
-          metrics={metrics} 
-          students={students}
-          lastUpdated={lastUpdated} 
-        />
-      </Box>
 
       {/* 受講生詳細モーダル（遅延読み込み） */}
       <OptimizedStudentDetailModal

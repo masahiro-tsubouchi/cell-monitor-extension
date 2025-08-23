@@ -40,8 +40,6 @@ dynamic = ["version"]
 [project.entrypoints.jupyter_server_extension]
 cell_monitor = "cell_monitor"
 
-[project.entrypoints.jupyter_lsp]
-cell_monitor = "cell_monitor.lsp"
 
 [project.optional-dependencies]
 test = [
@@ -76,7 +74,7 @@ source = "nodejs"
 "cell_monitor/labextension" = "share/jupyter/labextensions/cell-monitor"
 "install.json" = "share/jupyter/labextensions/cell-monitor/install.json"
 "jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
-"jupyter-config/jupyter_server_config.json" = "etc/jupyter/jupyter_server_config.d/cell_monitor.json"
+"jupyter-config/jupyter_server_config.d/cell_monitor.json" = "etc/jupyter/jupyter_server_config.d/cell_monitor.json"
 "schema" = "share/jupyter/lab/schemas/cell-monitor"
 
 [tool.hatch.build.targets.wheel]

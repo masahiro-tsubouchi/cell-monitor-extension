@@ -191,24 +191,24 @@ services:
       retries: ${HEALTH_CHECK_RETRIES:-3}
 
   # --- 配布用パッケージビルド専用サービス ---
-  extension-builder:
-    build:
-      context: ./cell-monitor-extension
-      dockerfile: Dockerfile.build
-      args:
-        - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
-        - NODE_MAJOR_VERSION=${NODE_MAJOR_VERSION:-20}
-        - JUPYTERLAB_VERSION=${JUPYTERLAB_VERSION:-4.0}
-    volumes:
-      # ビルド成果物(.whl)をホストに反映させるためにマウント
-      - ./cell-monitor-extension:/app
-      # ホスト側の壊れた/不整合な node_modules を無視して、コンテナ内のクリーンな依存を使う
-      - extension_node_modules:/app/node_modules
-    environment:
-      # 生成されるファイルの所有者をホストユーザーに合わせる
-      - HOST_UID=${HOST_UID:-1000}
-      - HOST_GID=${HOST_GID:-1000}
-      - NODE_ENV=${NODE_ENV:-development}
+  # extension-builder:
+  #   build:
+  #     context: ./cell-monitor-extension
+  #     dockerfile: Dockerfile.build
+  #     args:
+  #       - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
+  #       - NODE_MAJOR_VERSION=${NODE_MAJOR_VERSION:-20}
+  #       - JUPYTERLAB_VERSION=${JUPYTERLAB_VERSION:-4.0}
+  #   volumes:
+  #     # ビルド成果物(.whl)をホストに反映させるためにマウント
+  #     - ./cell-monitor-extension:/app
+  #     # ホスト側の壊れた/不整合な node_modules を無視して、コンテナ内のクリーンな依存を使う
+  #     - extension_node_modules:/app/node_modules
+  #   environment:
+  #     # 生成されるファイルの所有者をホストユーザーに合わせる
+  #     - HOST_UID=${HOST_UID:-1000}
+  #     - HOST_GID=${HOST_GID:-1000}
+  #     - NODE_ENV=${NODE_ENV:-development}
 
 volumes:
   postgres_data:
