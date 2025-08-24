@@ -11,7 +11,6 @@ import {
   Typography,
   Box,
   Chip,
-  LinearProgress,
   Badge,
   Tooltip
 } from '@mui/material';
@@ -24,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { StudentActivity } from '../../services/dashboardAPI';
 import { OptimizedStudentData } from '../../hooks/useOptimizedStudentList';
+import { ActivityStatusChip } from '../common/ActivityStatusChip';
 
 interface OptimizedStudentCardProps {
   studentData: OptimizedStudentData;
@@ -64,12 +64,8 @@ export const OptimizedStudentCard: React.FC<OptimizedStudentCardProps> = memo(({
       top: 0,
       backgroundColor: getPriorityColor(studentData.priorityLevel)
     },
-    activityProgress: {
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: getActivityProgressColor(studentData.activityScore)
-    }
-  }), [studentData.isHelpRequesting, studentData.priorityLevel, studentData.activityScore]);
+    // Activity progress styles removed - now using ActivityStatusChip
+  }), [studentData.isHelpRequesting, studentData.priorityLevel]);
 
   // 表示テキストをメモ化
   const displayData = useMemo(() => ({
@@ -142,20 +138,14 @@ export const OptimizedStudentCard: React.FC<OptimizedStudentCardProps> = memo(({
             </Typography>
           </Box>
 
-          {/* 活動スコアプログレス */}
-          <Box sx={{ mb: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-              <Typography variant="caption" color="text.secondary">
-                活動スコア
-              </Typography>
-              <Typography variant="caption" fontWeight="bold">
-                {Math.round(studentData.activityScore)}/100
-              </Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={studentData.activityScore}
-              sx={cardStyles.activityProgress}
+          {/* 活動状態チップ */}
+          <Box sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+            <ActivityStatusChip 
+              student={studentData.original} 
+              score={studentData.activityScore} 
+              size="small" 
+              showTooltip={true}
+              onClick={handleClick}
             />
           </Box>
 
@@ -239,11 +229,7 @@ function getPriorityColor(priority: 'high' | 'medium' | 'low'): string {
   }
 }
 
-function getActivityProgressColor(score: number): string {
-  if (score > 70) return '#4caf50';
-  if (score > 40) return '#ff9800';
-  return '#f44336';
-}
+// getActivityProgressColor function removed - replaced by ActivityStatusChip
 
 function getStatusText(status: string, isHelpRequesting: boolean): string {
   if (isHelpRequesting) return '🆘 ヘルプ要請中';
