@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { dashboardAPI, StudentActivity, DashboardMetrics, ActivityTimePoint } from '../services/dashboardAPI';
 import { getInstructorSettings } from '../utils/instructorStorage';
-import { deltaCalculator, deltaApplicator, DeltaPackage, DeltaUpdate } from '../utils/deltaCalculator';
+import { deltaCalculator, deltaApplicator, DeltaPackage } from '../utils/deltaCalculator';
 import { performanceMonitor, LoadComparison, withPerformanceTracking, withSyncPerformanceTracking } from '../utils/performanceMonitor';
 
 interface ProgressDashboardState {

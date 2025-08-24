@@ -232,6 +232,37 @@ async def delete_classroom_map(map_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"MAP削除に失敗しました: {str(e)}")
 
 
+@router.post("/map/create-default", response_model=ClassroomMapWithPositions)
+async def create_default_map(
+    instructor_id: Optional[str] = Form(None), db: Session = Depends(get_db)
+):
+    """
+    デフォルトMAP（画像なし）を作成
+    チーム配置のみを保存したい場合に使用
+    """
+    try:
+        # デフォルトMAP情報を作成
+        map_data = ClassroomMapCreate(
+            image_filename="",  # 画像ファイルなし
+            image_url="",       # 画像URLなし
+            original_filename=None,
+            uploaded_by=instructor_id,
+            file_size_bytes=0,
+            content_type=None,
+        )
+
+        classroom_map = classroom_map_crud.create_map(db, map_data)
+
+        return ClassroomMapWithPositions(
+            map_info=classroom_map, team_positions={}, is_visible=True
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"デフォルトMAP作成に失敗しました: {str(e)}"
+        )
+
+
 @router.get("/maps", response_model=list[ClassroomMap])
 async def get_all_maps(limit: int = 10, db: Session = Depends(get_db)):
     """

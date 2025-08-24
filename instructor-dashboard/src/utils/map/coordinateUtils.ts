@@ -121,12 +121,14 @@ export const adjustIconPositionForOverlap = (
   const adjustedMinDistance = screenWidth <= 480 ? Math.max(6, minDistance * 0.75) : minDistance;
   let adjustedPosition = { ...targetPosition };
   
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const hasOverlap = existingPositions.some(existingPos => 
-      calculateDistance(adjustedPosition, existingPos) < adjustedMinDistance
+  const checkOverlap = (position: Position) => {
+    return existingPositions.some(existingPos => 
+      calculateDistance(position, existingPos) < adjustedMinDistance
     );
-    
-    if (!hasOverlap) {
+  };
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (!checkOverlap(adjustedPosition)) {
       return boundPosition(adjustedPosition);
     }
     

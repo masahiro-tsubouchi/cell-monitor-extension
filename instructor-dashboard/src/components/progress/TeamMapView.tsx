@@ -32,7 +32,7 @@ import TeamIconsRenderer from './TeamIconsRenderer';
 import MapModal from './MapModal';
 import MapUploadArea from './MapUploadArea';
 import useDragAndDrop from '../../hooks/map/useDragAndDrop';
-import useMapUpload from '../../hooks/map/useMapUpload';
+// import useMapUpload from '../../hooks/map/useMapUpload';
 
 // ユーティリティ
 import {
@@ -45,7 +45,7 @@ import {
   calculateTeamLayout
 } from '../../utils/map/coordinateUtils';
 import {
-  MapErrorHandler,
+  // MapErrorHandler,
   useMapErrorHandler
 } from '../../utils/map/errorHandling';
 
@@ -81,7 +81,7 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isEditMode, setIsEditMode] = useState(false);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  // const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [browserZoomLevel, setBrowserZoomLevel] = useState(1);
 
   // チーム配置編集
@@ -166,18 +166,20 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
     const handleResize = throttle((entries: ResizeObserverEntry[]) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        setContainerSize({ width, height });
+        // setContainerSize({ width, height }); // 未使用のため一時的にコメント
+        console.debug('Container resized:', { width, height });
       }
     }, 16);
 
     const resizeObserver = new ResizeObserver(handleResize);
+    const currentRef = dragAndDrop.mapContainerRef.current;
 
-    if (dragAndDrop.mapContainerRef.current) {
-      resizeObserver.observe(dragAndDrop.mapContainerRef.current);
+    if (currentRef) {
+      resizeObserver.observe(currentRef);
     }
 
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [dragAndDrop.mapContainerRef]);
 
   // キーボードショートカット
   useEffect(() => {
@@ -200,7 +202,7 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
   // 初期データ読み込み
   useEffect(() => {
     loadMapData();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 自動リフレッシュ
   useEffect(() => {
@@ -239,10 +241,10 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
     }
   };
 
-  // 成功メッセージハンドラー
-  const handleSuccess = useCallback((message: string) => {
-    setSuccessMessage(message);
-  }, []);
+  // 成功メッセージハンドラー（将来使用予定）
+  // const handleSuccess = useCallback((message: string) => {
+  //   setSuccessMessage(message);
+  // }, []);
 
   // エラーハンドラー
   const handleError = useCallback((error: string) => {
@@ -291,7 +293,33 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
 
   // チーム配置保存
   const handleSavePositions = async () => {
-    if (!mapData?.map_info?.id) return;
+    if (!mapData?.map_info?.id) {
+      // MAP画像がない場合は、デフォルトMAPを作成してから配置を保存
+      try {
+        setIsLoading(true);
+        const instructorId = getInstructorId();
+        const defaultMapData = await classroomAPI.createDefaultMap(instructorId);
+        setMapData(defaultMapData);
+        
+        // 作成したMAP IDで配置を保存
+        await classroomAPI.updateTeamPositions(
+          defaultMapData.map_info!.id,
+          editingPositions,
+          instructorId
+        );
+        
+        setSuccessMessage('チーム配置が保存されました（MAP画像なし）');
+        setIsEditMode(false);
+        await loadMapData();
+        return;
+      } catch (err) {
+        const errorMessage = errorHandler.handleError(err, 'チーム配置保存');
+        setError(errorMessage);
+        return;
+      } finally {
+        setIsLoading(false);
+      }
+    }
 
     try {
       setIsLoading(true);
@@ -357,16 +385,14 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
 
   const handleMouseUp = () => setDragStart(null);
 
-  // MAPが存在しない場合のアップロード画面
-  if (!mapData || !mapData.map_info) {
-    return (
-      <MapUploadArea
-        onSuccess={handleSuccess}
-        onError={handleError}
-        onDataReload={loadMapData}
-      />
-    );
-  }
+  // MAP画像アップロードエリア表示切り替え
+  const [showUploadArea, setShowUploadArea] = useState(false);
+
+  // アップロード成功時の処理を更新
+  const handleSuccessUpdated = useCallback((message: string) => {
+    setSuccessMessage(message);
+    setShowUploadArea(false); // アップロード成功後にアップロードエリアを閉じる
+  }, []);
 
   return (
     <Box sx={{ mb: 3 }}>
@@ -377,6 +403,18 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* MAP画像アップロードボタン */}
+          <Tooltip title="MAP画像をアップロード">
+            <Button
+              onClick={() => setShowUploadArea(!showUploadArea)}
+              size="small"
+              variant={showUploadArea ? "contained" : "outlined"}
+              color="primary"
+              sx={{ fontSize: '12px', minWidth: 'auto', px: 2 }}
+            >
+              📸 MAP
+            </Button>
+          </Tooltip>
 
           {isEditMode && (
             <>
@@ -450,15 +488,26 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
                   <ZoomInIcon />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="MAP削除">
-                <IconButton onClick={handleDeleteMap} size="small" color="error">
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
+              {mapData?.map_info?.id && (
+                <Tooltip title="MAP削除">
+                  <IconButton onClick={handleDeleteMap} size="small" color="error">
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
             </>
           )}
         </Box>
       </Box>
+
+      {/* MAP画像アップロードエリア */}
+      {showUploadArea && (
+        <MapUploadArea
+          onSuccess={handleSuccessUpdated}
+          onError={handleError}
+          onDataReload={loadMapData}
+        />
+      )}
 
       {/* 編集モード通知 */}
       {isEditMode && (
@@ -488,7 +537,7 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
             display: 'grid',
             placeItems: 'stretch',
             overflow: 'hidden',
-            backgroundColor: dragAndDrop.isDragOverMap && isEditMode ? 'rgba(25, 118, 210, 0.1)' : 'transparent',
+            backgroundColor: dragAndDrop.isDragOverMap && isEditMode ? 'rgba(25, 118, 210, 0.1)' : '#f5f5f5', // 背景なしの場合はライトグレー
             border: dragAndDrop.isDragOverMap && isEditMode ? '3px dashed #1976d2' : 'none',
             transition: 'all 0.2s ease'
           }}
@@ -512,6 +561,26 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
                 zIndex: 1
               }}
             />
+          )}
+
+          {/* MAP画像がない場合の案内 */}
+          {!mapData?.map_info?.image_url && !showUploadArea && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                textAlign: 'center',
+                color: 'text.secondary',
+                zIndex: 1,
+                pointerEvents: 'none'
+              }}
+            >
+              <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                📸 MAP画像をアップロードするとチームアイコンの配置がより見やすくなります
+              </Typography>
+            </Box>
           )}
 
           {/* グリッドオーバーレイ */}
@@ -561,7 +630,7 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
             students={students}
             teams={displayTeams}
             editingPositions={editingPositions}
-            teamPositions={mapData.team_positions}
+            teamPositions={mapData?.team_positions || {}}
             draggedTeam={dragAndDrop.draggedTeam}
             isEditMode={isEditMode}
             browserZoomLevel={browserZoomLevel}
@@ -583,7 +652,7 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
         students={students}
         teams={displayTeams}
         editingPositions={editingPositions}
-        teamPositions={mapData.team_positions}
+        teamPositions={mapData?.team_positions || {}}
         browserZoomLevel={browserZoomLevel}
         zoom={zoom}
         onZoomIn={handleZoomIn}

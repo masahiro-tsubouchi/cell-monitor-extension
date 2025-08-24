@@ -176,6 +176,29 @@ class ClassroomAPIService {
   }
 
   /**
+   * デフォルトMAP（画像なし）を作成
+   */
+  async createDefaultMap(instructorId?: string): Promise<ClassroomMapWithPositions> {
+    const formData = new FormData();
+    
+    if (instructorId) {
+      formData.append('instructor_id', instructorId);
+    }
+
+    const response = await fetch(`${this.baseUrl}/map/create-default`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Default map creation failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  /**
    * アップロードファイル検証
    */
   validateUploadFile(file: File): { valid: boolean; error?: string } {

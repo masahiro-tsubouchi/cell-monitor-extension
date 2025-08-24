@@ -461,7 +461,7 @@ export const withRetry = async <T>(
     }
   }
 
-  throw lastError!;
+  throw new Error(lastError?.message || 'リトライ処理が失敗しました');
 };
 
 // ✅ エラー境界コンポーネント用のヘルパー

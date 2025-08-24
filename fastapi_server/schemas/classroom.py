@@ -56,9 +56,9 @@ class ClassroomMapBase(BaseModel):
 class ClassroomMapCreate(ClassroomMapBase):
     """教室MAP作成スキーマ"""
 
-    image_filename: str = Field(..., description="保存されたファイル名")
-    image_url: str = Field(..., description="画像URL")
-    file_size_bytes: Optional[int] = Field(None, description="ファイルサイズ(バイト)")
+    image_filename: str = Field("", description="保存されたファイル名（デフォルトMAPの場合は空文字）")
+    image_url: str = Field("", description="画像URL（デフォルトMAPの場合は空文字）")
+    file_size_bytes: Optional[int] = Field(0, description="ファイルサイズ(バイト)")
     content_type: Optional[str] = Field(None, description="コンテンツタイプ")
 
 

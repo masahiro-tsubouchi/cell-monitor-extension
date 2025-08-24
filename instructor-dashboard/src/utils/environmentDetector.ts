@@ -16,7 +16,6 @@ export interface DetectedEnvironment {
 export function detectBrowserEnvironment(): DetectedEnvironment {
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
-  const port = window.location.port;
 
   // HTTPS環境の検出
   const isSecure = protocol === 'https:';
@@ -24,11 +23,11 @@ export function detectBrowserEnvironment(): DetectedEnvironment {
   // Docker環境の検出（ホスト名が特定パターンの場合）
   const isDocker = hostname.includes('docker') ||
                    hostname.includes('container') ||
-                   process.env.NODE_ENV === 'development' && hostname === 'localhost';
+                   (process.env.NODE_ENV === 'development' && hostname === 'localhost');
 
   // 本番環境の検出
   const isProduction = process.env.NODE_ENV === 'production' ||
-                       !hostname.includes('localhost') && !hostname.includes('127.0.0.1');
+                       (!hostname.includes('localhost') && !hostname.includes('127.0.0.1'));
 
   if (isProduction) {
     return {

@@ -9,7 +9,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Switch,
   FormControlLabel,
   TextField,
@@ -26,11 +25,10 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon,
-  IconButton
+  ListItemIcon
 } from '@mui/material';
 import {
-  Settings as SettingsIcon,
+  // Settings as SettingsIcon,
   Save as SaveIcon,
   RestoreOutlined as RestoreIcon,
   Wifi as WebSocketIcon,
@@ -88,7 +86,7 @@ const defaultConfig: SystemConfig = {
 export const SystemSettings: React.FC = () => {
   const [config, setConfig] = useState<SystemConfig>(defaultConfig);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connected');
+  const [connectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connected');
   
   const {
     deltaMode,

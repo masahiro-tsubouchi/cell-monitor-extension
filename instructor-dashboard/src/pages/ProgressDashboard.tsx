@@ -37,8 +37,7 @@ import {
   VisibilityBasedLoader,
   SkeletonLoader
 } from '../components/lazy/LazyComponentLoader';
-// import { MetricsPanel } from '../components/progress/MetricsPanel'; // 未使用
-import { EnhancedMetricsPanel } from '../components/enhanced/MetricsPanel';
+// import { EnhancedMetricsPanel } from '../components/enhanced/MetricsPanel'; // 将来使用予定
 import { CriticalAlertBar } from '../components/enhanced/AlertSystem';
 import { KeyboardShortcutsHelp } from '../components/enhanced/KeyboardHelp';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -186,11 +185,9 @@ export const ProgressDashboard: React.FC = () => {
   // Store から状態取得
   const {
     students,
-    metrics,
     activityChart,
     isLoading,
     error,
-    lastUpdated,
     autoRefresh,
     selectedStudent,
     refreshData,

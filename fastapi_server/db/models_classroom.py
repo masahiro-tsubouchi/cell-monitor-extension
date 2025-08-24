@@ -23,8 +23,8 @@ class ClassroomMap(Base):
     __tablename__ = "classroom_maps"
 
     id = Column(Integer, primary_key=True, index=True)
-    image_filename = Column(String(255), nullable=False)
-    image_url = Column(Text, nullable=False)
+    image_filename = Column(String(255), nullable=False, default="")
+    image_url = Column(Text, nullable=False, default="")
     original_filename = Column(String(255), nullable=True)
     uploaded_at = Column(DateTime, default=func.now(), nullable=False, index=True)
     uploaded_by = Column(String(255), nullable=True)  # 講師メールアドレス
