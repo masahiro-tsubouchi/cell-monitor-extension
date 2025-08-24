@@ -51,6 +51,7 @@ import {
 } from '../utils/instructorStorage';
 import { DashboardViewMode, getViewModeLabel } from '../types/dashboard';
 import { useDashboardLogic } from '../hooks/useDashboardLogic';
+import { useWebSocketManager } from '../hooks/useWebSocketManager';
 
 // メモ化されたヘッダーコンポーネント
 const DashboardHeader = memo<{
@@ -218,14 +219,64 @@ export const ProgressDashboard: React.FC = () => {
     return dashboardLogic.setupUserInteractionDetection(markUserActive);
   }, [dashboardLogic, markUserActive]);
 
-  // WebSocketイベントハンドラー設定（共通ロジック使用）
-  useEffect(() => {
-    const eventHandlers = dashboardLogic.setupWebSocketHandlers(
-      updateStudentStatus,
-      refreshData
-    );
-    return dashboardLogic.initializeWebSocket(eventHandlers);
-  }, [dashboardLogic, updateStudentStatus, refreshData]);
+  // 統一WebSocketマネージャー設定（WebSocket接続一元化）
+  const _webSocketManager = useWebSocketManager({
+    // 学生進捗更新ハンドラー
+    onStudentProgressUpdate: (data: StudentActivity) => {
+      console.log('📊 Student progress update (unified):', data);
+      updateStudentStatus(data.emailAddress, {
+        userName: data.userName,
+        currentNotebook: data.currentNotebook,
+        lastActivity: data.lastActivity,
+        status: data.status,
+        cellExecutions: (data.cellExecutions || 1),
+        errorCount: data.errorCount
+      });
+    },
+    
+    // セル実行イベントハンドラー
+    onCellExecution: (data: any) => {
+      console.log('⚡ Cell execution event (unified):', data);
+      updateStudentStatus(data.emailAddress, {
+        cellExecutions: (data.cellExecutions || 1),
+        lastActivity: '今',
+        status: 'active' as const
+      });
+    },
+    
+    // ヘルプ要請ハンドラー
+    onHelpRequest: (data: any) => {
+      console.log('🆘 Help request event (unified):', data);
+      updateStudentStatus(data.emailAddress, {
+        isRequestingHelp: true,
+        lastActivity: '今',
+        status: 'help' as any
+      });
+      // 即座にフル更新で精度を確保
+      setTimeout(() => refreshData(), 100);
+    },
+    
+    // ヘルプ解決ハンドラー
+    onHelpResolved: (data: any) => {
+      console.log('✅ Help resolved event (unified):', data);
+      updateStudentStatus(data.emailAddress, {
+        isRequestingHelp: false,
+        lastActivity: '今'
+      });
+      // 即座にフル更新
+      setTimeout(() => refreshData(), 100);
+    },
+    
+    // 接続状態変化ハンドラー
+    onConnectionChange: (state: string) => {
+      console.log(`🔌 WebSocket connection state changed: ${state}`);
+    },
+    
+    // エラーハンドラー
+    onError: (error: any) => {
+      console.error('❌ Dashboard WebSocket error (unified):', error);
+    }
+  });
 
   // 自動リフレッシュ設定（共通ロジック使用）
   useEffect(() => {
