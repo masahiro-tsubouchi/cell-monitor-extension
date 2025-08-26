@@ -60,6 +60,12 @@
       "title": "通知表示",
       "description": "データがサーバーに送信された時に通知を表示する",
       "default": true
+    },
+    "animationEnabled": {
+      "type": "boolean",
+      "title": "ヘルプボタンアニメーション",
+      "description": "ヘルプ要請中にボタンのパルスアニメーションを有効にする",
+      "default": true
     }
   }
 }

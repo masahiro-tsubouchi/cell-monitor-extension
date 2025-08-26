@@ -30,17 +30,17 @@ services:
       args:
         - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
         - JUPYTERLAB_PORT=${JUPYTERLAB_PORT:-8888}
-        - JUPYTER_TOKEN=${JUPYTER_TOKEN:-easy}
+        # - JUPYTER_TOKEN=${JUPYTER_TOKEN:-easy}
     ports:
       - "${JUPYTERLAB_PORT:-8888}:8888"
     volumes:
       - ./notebooks:/notebooks
       # 拡張機能配布用ディレクトリをマウント（手動インストール用）
-      - ./cell-monitor-extension/dist:/app/dist:ro
+      - ./cell-monitor-extension/dist:/app/dist
     environment:
       - JUPYTER_TOKEN=${JUPYTER_TOKEN}
       - CELL_MONITOR_TEST_MODE=${CELL_MONITOR_TEST_MODE:-true}
-      - CELL_MONITOR_SERVER_URL=${CELL_MONITOR_SERVER_URL:-http://fastapi:8000/api/v1/events}
+      - CELL_MONITOR_SERVER_URL=${CELL_MONITOR_SERVER_URL:-http://localhost:8000/api/v1/events}
       - NODE_ENV=${NODE_ENV:-development}
     depends_on:
       - fastapi

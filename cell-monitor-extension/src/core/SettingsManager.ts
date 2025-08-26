@@ -323,11 +323,23 @@ export class SettingsManager {
   /**
    * 通知設定を取得
    */
-  getNotificationSettings(): { showNotifications: boolean } {
+  getNotificationSettings(): {
+    showNotifications: boolean;
+    animationEnabled: boolean;
+  } {
     if (!this.settings) {
-      return { showNotifications: true };
+      return {
+        showNotifications: true,
+        animationEnabled: true
+      };
     }
+    
     const showNotifications = this.settings.get('showNotifications').composite as boolean;
-    return { showNotifications: showNotifications !== undefined ? showNotifications : true };
+    const animationEnabled = this.settings.get('animationEnabled')?.composite as boolean;
+    
+    return {
+      showNotifications: showNotifications !== undefined ? showNotifications : true,
+      animationEnabled: animationEnabled !== undefined ? animationEnabled : true
+    };
   }
 }

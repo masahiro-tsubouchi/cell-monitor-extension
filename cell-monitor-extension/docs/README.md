@@ -2,22 +2,31 @@
 
 JupyterLab Cell Monitor Extension の詳細な技術仕様と開発ガイドです。
 
+## 🚀 クイックスタート
+
+| 読者 | 推奨ドキュメント | 目的 |
+|------|-----------------|------|
+| **AI開発者** | [AI Development Context](./AI_DEVELOPMENT_CONTEXT.md) | AI駆動開発のための包括的コンテキスト |
+| **人間開発者** | [Development Guide](./DEVELOPMENT_GUIDE.md) | 詳細な開発フローとベストプラクティス |
+| **新規参加者** | [Setup Guide](./development/SETUP.md) | 開発環境の構築手順 |
+| **システム管理者** | [Operations Guide](./OPERATIONS_GUIDE.md) | 運用・保守・トラブルシューティング |
+
 ## 📚 ドキュメント構成
+
+### 🤖 AI開発支援
+- **[AI Development Context](./AI_DEVELOPMENT_CONTEXT.md)** - AI開発者向け包括的コンテキスト情報
+- **[Development Guide](./DEVELOPMENT_GUIDE.md)** - 詳細な開発フローとベストプラクティス
 
 ### 🏗️ アーキテクチャ
 - [システムアーキテクチャ](./architecture/SYSTEM_ARCHITECTURE.md) - 拡張機能の全体設計
-- [プラグインライフサイクル](./architecture/PLUGIN_LIFECYCLE.md) - JupyterLab拡張機能の動作フロー
-- [イベント処理パイプライン](./architecture/EVENT_PROCESSING.md) - セル実行監視の仕組み
+- [Extension Evaluation Report](./EXTENSION_EVALUATION_REPORT.md) - 品質評価と多角的分析
 
 ### 📡 API仕様
 - [TypeScript API リファレンス](./api/TYPESCRIPT_API.md) - フロントエンドインターフェース
-- [Python ハンドラー API](./api/PYTHON_HANDLERS.md) - サーバーサイド処理
-- [設定スキーマ](./api/SETTINGS_SCHEMA.md) - 設定システムの仕様
-- [データモデル](./api/DATA_MODELS.md) - イベントデータ構造
 
 ### 🛠️ 開発ガイド
 - [開発環境セットアップ](./development/SETUP.md) - 開発開始手順
-- [コード問題分析と修正計画](./CODE_ISSUES_AND_FIXES.md) - 既存問題の詳細分析と段階的修正方針
+- [既知の問題一覧](./maintenance/KNOWN_ISSUES.md) - 既存問題の詳細分析と修正状況
 
 ### 📋 運用・管理ガイド
 - [運用ガイド](./OPERATIONS_GUIDE.md) - 日常運用、サーバー停止時の動作、トラブルシューティング
@@ -68,8 +77,15 @@ jupyter lab
 ### 主要ファイル構成
 ```
 cell-monitor-extension/
-├── src/
-│   └── index.ts              # メインプラグイン実装
+├── src/                      # TypeScript ソースコード
+│   ├── index.ts              # メインプラグイン実装
+│   ├── types/interfaces.ts   # 型定義
+│   ├── core/                 # コアロジック
+│   │   ├── EventManager.ts   # イベント処理
+│   │   └── SettingsManager.ts# 設定管理
+│   ├── services/             # 外部サービス連携
+│   │   └── DataTransmissionService.ts # データ送信
+│   └── utils/                # ユーティリティ関数
 ├── cell_monitor/
 │   ├── __init__.py           # Python拡張機能エントリーポイント
 │   └── handlers.py           # プロキシハンドラー実装

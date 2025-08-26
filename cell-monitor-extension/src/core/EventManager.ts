@@ -86,7 +86,17 @@ export class EventManager {
       // 重複処理防止機構（元のコードと同じ）
       const currentTime = Date.now();
       const lastTime = this.processedCells.get(cellId) || 0;
-      const timeDiff = currentTime - lastTime;
+      const rawTimeDiff = currentTime - lastTime;
+      const timeDiff = Math.max(0, Math.min(rawTimeDiff, 300000)); // 5分上限
+      
+      // 異常値検出とログ出力
+      if (rawTimeDiff > 300000) {
+        this.logger.warn('Abnormal timestamp detected', {
+          currentTime, 
+          lastTime, 
+          rawDiff: rawTimeDiff
+        });
+      }
 
       this.logger.perfDebug('Cell execution processing', {
         cellId,
@@ -261,89 +271,79 @@ export class EventManager {
   /**
    * ヘルプセッションを開始
    */
-  async startHelpSession(): Promise<void> {
-    try {
-      const currentWidget = this.notebookTracker.currentWidget;
-      if (!currentWidget) {
-        Notification.warning('ノートブックが開かれていません');
-        return;
-      }
-
-      const notebookPath = currentWidget.context.path || 'unknown';
-      const { emailAddress, userName, teamName } = this.settingsManager.getUserInfo();
-
-      this.helpSession.set(notebookPath, true);
-
-      const progressData: IStudentProgressData = {
-        eventId: generateUUID(),
-        eventType: 'help',
-        eventTime: new Date().toISOString(),
-        emailAddress,
-        teamName,
-        userName,
-        sessionId: this.sessionId,
-        notebookPath
-      };
-
-      await this.dataTransmissionService.sendProgressData([progressData]);
-
-      const { showNotifications } = this.settingsManager.getNotificationSettings();
-      if (showNotifications) {
-        Notification.info('ヘルプセッションを開始しました', { autoClose: 2000 });
-      }
-    } catch (error) {
-      handleUIError(
-        error instanceof Error ? error : new Error(String(error)),
-        'Help session start',
-        'ヘルプセッションの開始に失敗しました。'
-      );
+  startHelpSession(): void {
+    const currentWidget = this.notebookTracker.currentWidget;
+    if (!currentWidget) {
+      this.logger.warn('No notebook widget available for help session start');
+      return;
     }
+
+    const notebookPath = currentWidget.context.path || 'unknown';
+    const { emailAddress, userName, teamName } = this.settingsManager.getUserInfo();
+
+    const progressData: IStudentProgressData = {
+      eventId: generateUUID(),
+      eventType: 'help',
+      eventTime: new Date().toISOString(),
+      emailAddress,
+      teamName,
+      userName,
+      sessionId: this.sessionId,
+      notebookPath
+    };
+
+    // 背景でサーバー通信（エラーはUIをブロックしない）
+    this.dataTransmissionService.sendProgressData([progressData])
+      .then(() => {
+        const { showNotifications } = this.settingsManager.getNotificationSettings();
+        if (showNotifications) {
+          Notification.info('ヘルプセッションを開始しました', { autoClose: 2000 });
+        }
+        this.logger.debug('Help session started successfully');
+      })
+      .catch((error) => {
+        this.logger.error('Failed to start help session:', error);
+        // エラーはログのみ、UIはブロックしない
+      });
   }
 
   /**
    * ヘルプセッションを停止
    */
-  async stopHelpSession(): Promise<void> {
-    try {
-      const currentWidget = this.notebookTracker.currentWidget;
-      if (!currentWidget) {
-        return;
-      }
-
-      const notebookPath = currentWidget.context.path || 'unknown';
-
-      if (!this.helpSession.get(notebookPath)) {
-        return;
-      }
-
-      const { emailAddress, userName, teamName } = this.settingsManager.getUserInfo();
-
-      this.helpSession.set(notebookPath, false);
-
-      const progressData: IStudentProgressData = {
-        eventId: generateUUID(),
-        eventType: 'help_stop',
-        eventTime: new Date().toISOString(),
-        emailAddress,
-        teamName,
-        userName,
-        sessionId: this.sessionId,
-        notebookPath
-      };
-
-      await this.dataTransmissionService.sendProgressData([progressData]);
-
-      const { showNotifications } = this.settingsManager.getNotificationSettings();
-      if (showNotifications) {
-        Notification.success('ヘルプセッションを停止しました', { autoClose: 2000 });
-      }
-    } catch (error) {
-      handleUIError(
-        error instanceof Error ? error : new Error(String(error)),
-        'Help session stop',
-        'ヘルプセッションの停止に失敗しました。'
-      );
+  stopHelpSession(): void {
+    const currentWidget = this.notebookTracker.currentWidget;
+    if (!currentWidget) {
+      this.logger.warn('No notebook widget available for help session stop');
+      return;
     }
+
+    const notebookPath = currentWidget.context.path || 'unknown';
+    const { emailAddress, userName, teamName } = this.settingsManager.getUserInfo();
+
+    const progressData: IStudentProgressData = {
+      eventId: generateUUID(),
+      eventType: 'help_stop',
+      eventTime: new Date().toISOString(),
+      emailAddress,
+      teamName,
+      userName,
+      sessionId: this.sessionId,
+      notebookPath
+    };
+
+    // 背景でサーバー通信（エラーはUIをブロックしない）
+    this.dataTransmissionService.sendProgressData([progressData])
+      .then(() => {
+        const { showNotifications } = this.settingsManager.getNotificationSettings();
+        if (showNotifications) {
+          Notification.success('ヘルプセッションを停止しました', { autoClose: 2000 });
+        }
+        this.logger.debug('Help session stopped successfully');
+      })
+      .catch((error) => {
+        this.logger.error('Failed to stop help session:', error);
+        // エラーはログのみ、UIはブロックしない
+      });
   }
 
   /**
@@ -385,46 +385,30 @@ export class EventManager {
   }
 
   /**
-   * ヘルプボタンを作成する（元のコードベース）
+   * ヘルプボタンを作成する（DOM安全版）
    */
   private createHelpButton(): ToolbarButton {
-    this.logger.debug('Creating help button with best practices...');
+    this.logger.debug('Creating help button with DOM-safe implementation...');
 
     const helpButton: ToolbarButton = new ToolbarButton({
       className: 'jp-help-button jp-ToolbarButton',
-      onClick: () => {}, // 初期化時は空関数
+      onClick: () => {
+        this.logger.debug('Help button clicked!');
+        this.toggleHelpState(helpButton);
+      },
       tooltip: 'ヘルプ要請ボタン - クリックでON/OFF切替',
-      label: '講師に助けを求める',
-      iconClass: '',
+      label: '🆘 講師に助けを求める',
+      iconClass: 'jp-help-button__icon',
       enabled: true
     });
 
-    this.logger.debug('ToolbarButton created:', helpButton);
-
-    // DOM挿入後にクリックイベントを設定
-    setTimeout(() => {
-      helpButton.onClick = () => {
-        this.logger.debug('Help button clicked!');
-        this.toggleHelpState(helpButton);
-      };
-
-      // バックアップとしてDOMイベントリスナーも追加
-      const buttonNode = helpButton.node;
-      buttonNode.addEventListener('click', (event: Event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.logger.debug('Help button DOM click event triggered');
-        this.toggleHelpState(helpButton);
-      });
-
-      this.logger.debug('Help button click handlers set up');
-    }, 100);
-
+    this.logger.debug('ToolbarButton created with persistent onClick handler');
     return helpButton;
   }
 
+
   /**
-   * ヘルプ状態を切り替え（元のコードロジック）
+   * ヘルプ状態を切り替え（シンプルトグル）
    */
   private toggleHelpState(button: ToolbarButton): void {
     const currentWidget = this.notebookTracker.currentWidget;
@@ -433,23 +417,71 @@ export class EventManager {
       return;
     }
 
-    const notebookPath = currentWidget.context.path || 'unknown';
-    const isHelpActive = this.helpSession.get(notebookPath) || false;
+    // UI状態で判定（シンプルで確実）
+    const isCurrentlyActive = button.node.classList.contains('jp-help-button--active');
+    
+    this.logger.debug('toggleHelpState called, currently active:', isCurrentlyActive);
 
-    this.logger.debug('toggleHelpState called, current state:', isHelpActive);
-
-    if (!isHelpActive) {
-      // ヘルプセッション開始
-      this.startHelpSession();
-      button.node.style.backgroundColor = '#ff6b6b';
-      button.node.style.color = 'white';
-      button.node.textContent = 'ヘルプ中...';
+    if (!isCurrentlyActive) {
+      // OFF → ON: 即座にUI切替 + 背景でサーバー通信
+      this.activateHelpButton(button);
+      this.startHelpSession(); // await削除、エラーは内部処理
     } else {
-      // ヘルプセッション停止
-      this.stopHelpSession();
-      button.node.style.backgroundColor = '';
-      button.node.style.color = '';
-      button.node.textContent = '講師に助けを求める';
+      // ON → OFF: 即座にUI切替 + 背景でサーバー通信
+      this.deactivateHelpButton(button);
+      this.stopHelpSession(); // await削除、エラーは内部処理
     }
+  }
+
+  /**
+   * ヘルプボタンをアクティブ状態に切り替え（DOM安全版）
+   */
+  private activateHelpButton(button: ToolbarButton): void {
+    // CSS状態変更（イベントハンドラー保持）
+    button.node.classList.add('jp-help-button--active');
+    
+    // テキストコンテンツのみ変更（DOM構造保持）
+    const textElement = button.node.querySelector('.jp-ToolbarButtonComponent-label');
+    if (textElement) {
+      textElement.textContent = '🆘 ヘルプ要請中...';
+    }
+    
+    // タイトル属性でツールチップ更新
+    button.node.setAttribute('title', 'ヘルプ要請中 - クリックで停止');
+    
+    // 内部状態も更新
+    const currentWidget = this.notebookTracker.currentWidget;
+    if (currentWidget) {
+      const notebookPath = currentWidget.context.path || 'unknown';
+      this.helpSession.set(notebookPath, true);
+    }
+    
+    this.logger.debug('Help button activated with DOM-safe method');
+  }
+
+  /**
+   * ヘルプボタンを非アクティブ状態に切り替え（DOM安全版）
+   */
+  private deactivateHelpButton(button: ToolbarButton): void {
+    // CSS状態変更（イベントハンドラー保持）
+    button.node.classList.remove('jp-help-button--active');
+    
+    // テキストコンテンツのみ変更（DOM構造保持）
+    const textElement = button.node.querySelector('.jp-ToolbarButtonComponent-label');
+    if (textElement) {
+      textElement.textContent = '🆘 講師に助けを求める';
+    }
+    
+    // タイトル属性でツールチップ更新
+    button.node.setAttribute('title', 'ヘルプ要請ボタン - クリックでON/OFF切替');
+    
+    // 内部状態も更新
+    const currentWidget = this.notebookTracker.currentWidget;
+    if (currentWidget) {
+      const notebookPath = currentWidget.context.path || 'unknown';
+      this.helpSession.set(notebookPath, false);
+    }
+    
+    this.logger.debug('Help button deactivated with DOM-safe method');
   }
 }

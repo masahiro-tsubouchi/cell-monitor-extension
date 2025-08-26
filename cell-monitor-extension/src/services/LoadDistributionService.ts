@@ -23,10 +23,13 @@ export class LoadDistributionService {
   ): Promise<void> {
     if (data.length === 0) return;
 
-    // 学生IDベースの一意な遅延計算（再現可能）
+    // 動的遅延計算（セルID + タイムスタンプベース）
     const userEmail = data[0]?.emailAddress || '';
-    const studentHash = this.hashString(userEmail);
-    const baseDelay = (studentHash % 3000) + 500; // 0.5-3.5秒の遅延
+    const cellId = data[0]?.cellId || '';
+    const timestamp = Date.now();
+    const combinedSeed = `${userEmail}-${cellId}-${Math.floor(timestamp/1000)}`;
+    const dynamicHash = this.hashString(combinedSeed);
+    const baseDelay = (dynamicHash % 2000) + 200; // 0.2-2.2秒で動的変動
     
     this.logger.debug('Load distribution delay calculated', {
       userEmail: userEmail.substring(0, 5) + '***', // プライバシー保護
