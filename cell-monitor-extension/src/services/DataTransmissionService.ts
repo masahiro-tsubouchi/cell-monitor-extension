@@ -29,10 +29,10 @@ export class DataTransmissionService {
     this.loadDistributionService = new LoadDistributionService(settingsManager);
     
     // HTTP接続プール設定（Phase 2.1: 接続プール最適化）
+    // ブラウザ環境では Connection ヘッダーは自動管理されるため除外
     this.axiosInstance = axios.create({
       timeout: 8000,
       headers: { 
-        'Connection': 'keep-alive',
         'Content-Type': 'application/json'
       },
       maxRedirects: 3,
@@ -43,7 +43,6 @@ export class DataTransmissionService {
     this.legacyAxiosInstance = axios.create({
       timeout: 8000,
       headers: { 
-        'Connection': 'keep-alive',
         'Content-Type': 'application/json'
       },
       maxRedirects: 3,

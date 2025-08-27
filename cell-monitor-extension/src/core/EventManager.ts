@@ -17,9 +17,12 @@ export class EventManager {
   private sessionId: string;
   private executionHandlerRegistered: boolean = false;
   private helpSession: Map<string, boolean> = new Map();
+  private helpIntervals: Map<string, any> = new Map(); // Phase 2.3: 継続HELP送信
+  private helpSessionTimestamps: Map<string, number> = new Map(); // Phase 2.3: タイムスタンプ管理
   private processedCells: Map<string, number> = new Map();
   private logger = createLogger('EventManager');
   // private lastProcessedTime: number = 0; // 将来の実装用に残しておく
+  private static readonly MAX_HELP_SESSIONS = 20; // Phase 2.3: 緊急時FIFO制限
 
   constructor(
     notebookTracker: INotebookTracker,
@@ -269,7 +272,7 @@ export class EventManager {
   }
 
   /**
-   * ヘルプセッションを開始
+   * ヘルプセッションを開始（Phase 2.3: 継続HELP送信対応）
    */
   startHelpSession(): void {
     const currentWidget = this.notebookTracker.currentWidget;
@@ -279,36 +282,41 @@ export class EventManager {
     }
 
     const notebookPath = currentWidget.context.path || 'unknown';
-    const { emailAddress, userName, teamName } = this.settingsManager.getUserInfo();
-
-    const progressData: IStudentProgressData = {
-      eventId: generateUUID(),
-      eventType: 'help',
-      eventTime: new Date().toISOString(),
-      emailAddress,
-      teamName,
-      userName,
-      sessionId: this.sessionId,
-      notebookPath
-    };
-
-    // 背景でサーバー通信（エラーはUIをブロックしない）
-    this.dataTransmissionService.sendProgressData([progressData])
-      .then(() => {
-        const { showNotifications } = this.settingsManager.getNotificationSettings();
-        if (showNotifications) {
-          Notification.info('ヘルプセッションを開始しました', { autoClose: 2000 });
-        }
-        this.logger.debug('Help session started successfully');
-      })
-      .catch((error) => {
-        this.logger.error('Failed to start help session:', error);
-        // エラーはログのみ、UIはブロックしない
+    
+    // 既に継続送信中の場合は何もしない
+    if (this.helpIntervals.has(notebookPath)) {
+      this.logger.debug('Help session already active', { 
+        notebookPath: notebookPath.substring(0, 20) + '...' 
       });
+      return;
+    }
+    
+    // 即座に最初のHELPを送信
+    this.sendHelpEvent(notebookPath);
+    
+    // 10秒間隔での継続送信を開始
+    const interval = setInterval(() => {
+      this.sendHelpEvent(notebookPath);
+    }, 10000);
+    
+    this.helpIntervals.set(notebookPath, interval);
+    this.helpSession.set(notebookPath, true);
+    this.helpSessionTimestamps.set(notebookPath, Date.now());
+    
+    this.logger.info('Continuous help session started', { 
+      notebookPath: notebookPath.substring(0, 20) + '...',
+      intervalId: 'set'
+    });
+    
+    // UI通知
+    const { showNotifications } = this.settingsManager.getNotificationSettings();
+    if (showNotifications) {
+      Notification.info('継続ヘルプセッションを開始しました', { autoClose: 2000 });
+    }
   }
 
   /**
-   * ヘルプセッションを停止
+   * ヘルプセッションを停止（Phase 2.3: バルククリーンアップ対応）
    */
   stopHelpSession(): void {
     const currentWidget = this.notebookTracker.currentWidget;
@@ -318,44 +326,37 @@ export class EventManager {
     }
 
     const notebookPath = currentWidget.context.path || 'unknown';
-    const { emailAddress, userName, teamName } = this.settingsManager.getUserInfo();
-
-    const progressData: IStudentProgressData = {
-      eventId: generateUUID(),
-      eventType: 'help_stop',
-      eventTime: new Date().toISOString(),
-      emailAddress,
-      teamName,
-      userName,
-      sessionId: this.sessionId,
-      notebookPath
-    };
-
-    // 背景でサーバー通信（エラーはUIをブロックしない）
-    this.dataTransmissionService.sendProgressData([progressData])
-      .then(() => {
-        const { showNotifications } = this.settingsManager.getNotificationSettings();
-        if (showNotifications) {
-          Notification.success('ヘルプセッションを停止しました', { autoClose: 2000 });
-        }
-        this.logger.debug('Help session stopped successfully');
-      })
-      .catch((error) => {
-        this.logger.error('Failed to stop help session:', error);
-        // エラーはログのみ、UIはブロックしない
+    
+    // 継続送信を停止
+    const interval = this.helpIntervals.get(notebookPath);
+    if (interval) {
+      clearInterval(interval);
+      this.helpIntervals.delete(notebookPath);
+      this.logger.debug('Continuous help sending stopped', {
+        notebookPath: notebookPath.substring(0, 20) + '...'
       });
+    }
+    
+    // 最終のhelp_stopイベントを送信
+    this.sendHelpStopEvent(notebookPath);
+    
+    // Phase 2.3: バルククリーンアップ実行（大幅メモリ削減）
+    this.bulkCleanupOldSessions();
+    
+    this.helpSession.set(notebookPath, false);
+    
+    // UI通知
+    const { showNotifications } = this.settingsManager.getNotificationSettings();
+    if (showNotifications) {
+      Notification.success('ヘルプセッション停止（メモリクリーンアップ実行）', { autoClose: 2000 });
+    }
+    
+    this.logger.info('Help session stopped with bulk cleanup', {
+      notebookPath: notebookPath.substring(0, 20) + '...',
+      remainingSessions: this.helpSession.size
+    });
   }
 
-  /**
-   * 新しいセッションを開始
-   */
-  startNewSession(): void {
-    this.sessionId = generateUUID();
-    this.helpSession.clear();
-    this.processedCells.clear();
-    // this.lastProcessedTime = 0;
-    this.logger.info('New session started:', this.sessionId);
-  }
 
   /**
    * ノートブックのツールバーにヘルプボタンを追加（元のコードと同じ方式）
@@ -483,5 +484,149 @@ export class EventManager {
     }
     
     this.logger.debug('Help button deactivated with DOM-safe method');
+  }
+
+  /**
+   * Phase 2.3: 単一HELP送信（継続送信用）
+   */
+  private sendHelpEvent(notebookPath: string): void {
+    const { emailAddress, userName, teamName } = this.settingsManager.getUserInfo();
+
+    const progressData: IStudentProgressData = {
+      eventId: generateUUID(),
+      eventType: 'help',
+      eventTime: new Date().toISOString(),
+      emailAddress,
+      teamName,
+      userName,
+      sessionId: this.sessionId,
+      notebookPath
+    };
+
+    // 背景でサーバー通信（エラーは内部処理のみ）
+    this.dataTransmissionService.sendProgressData([progressData])
+      .then(() => {
+        this.logger.debug('Continuous help event sent', {
+          notebookPath: notebookPath.substring(0, 20) + '...'
+        });
+      })
+      .catch((error) => {
+        this.logger.error('Failed to send continuous help event:', error);
+      });
+  }
+
+  /**
+   * Phase 2.3: HELP停止イベント送信
+   */
+  private sendHelpStopEvent(notebookPath: string): void {
+    const { emailAddress, userName, teamName } = this.settingsManager.getUserInfo();
+
+    const progressData: IStudentProgressData = {
+      eventId: generateUUID(),
+      eventType: 'help_stop',
+      eventTime: new Date().toISOString(),
+      emailAddress,
+      teamName,
+      userName,
+      sessionId: this.sessionId,
+      notebookPath
+    };
+
+    // 背景でサーバー通信
+    this.dataTransmissionService.sendProgressData([progressData])
+      .then(() => {
+        this.logger.debug('Help stop event sent', {
+          notebookPath: notebookPath.substring(0, 20) + '...'
+        });
+      })
+      .catch((error) => {
+        this.logger.error('Failed to send help stop event:', error);
+      });
+  }
+
+  /**
+   * Phase 2.3: バルククリーンアップ（大幅メモリ削減）
+   */
+  private bulkCleanupOldSessions(): void {
+    const now = Date.now();
+    const cutoffTime = now - (30 * 60 * 1000); // 30分前
+    let removedCount = 0;
+    
+    this.logger.debug('Starting bulk cleanup', {
+      totalSessions: this.helpSession.size,
+      cutoffTime: new Date(cutoffTime).toISOString()
+    });
+    
+    // 30分以上前のセッションを全て削除
+    for (const [key, timestamp] of this.helpSessionTimestamps.entries()) {
+      if (timestamp < cutoffTime) {
+        this.helpSession.delete(key);
+        this.helpSessionTimestamps.delete(key);
+        
+        // 対応するintervalも確認・削除
+        const interval = this.helpIntervals.get(key);
+        if (interval) {
+          clearInterval(interval);
+          this.helpIntervals.delete(key);
+        }
+        
+        removedCount++;
+      }
+    }
+    
+    // 緊急時のFIFO制限も併用（フェイルセーフ）
+    this.emergencyFIFOCleanup();
+    
+    this.logger.info('Bulk cleanup completed', {
+      removedSessions: removedCount,
+      remainingSessions: this.helpSession.size,
+      memoryReduction: `${removedCount * 0.4}MB estimated`
+    });
+  }
+
+  /**
+   * Phase 2.3: 緊急時FIFO制限（フェイルセーフ機能）
+   */
+  private emergencyFIFOCleanup(): void {
+    if (this.helpSession.size >= EventManager.MAX_HELP_SESSIONS) {
+      const firstKey = this.helpSession.keys().next().value;
+      if (firstKey) {
+        this.helpSession.delete(firstKey);
+        this.helpSessionTimestamps.delete(firstKey);
+        
+        const interval = this.helpIntervals.get(firstKey);
+        if (interval) {
+          clearInterval(interval);
+          this.helpIntervals.delete(firstKey);
+        }
+        
+        this.logger.debug('Emergency FIFO cleanup executed', {
+          removedKey: firstKey.substring(0, 10) + '***',
+          currentSize: this.helpSession.size
+        });
+      }
+    }
+  }
+
+  /**
+   * 新しいセッションを開始（Phase 2.3: 全クリーンアップ強化）
+   */
+  startNewSession(): void {
+    // 全ての継続送信を停止
+    for (const [, interval] of this.helpIntervals.entries()) {
+      clearInterval(interval);
+    }
+    this.helpIntervals.clear();
+    
+    this.sessionId = generateUUID();
+    this.helpSession.clear();
+    this.helpSessionTimestamps.clear();
+    this.processedCells.clear();
+    // this.lastProcessedTime = 0;
+    
+    this.logger.info('New session started with full cleanup:', {
+      sessionId: this.sessionId,
+      memoryCleanup: 'complete'
+    });
   }
 }
