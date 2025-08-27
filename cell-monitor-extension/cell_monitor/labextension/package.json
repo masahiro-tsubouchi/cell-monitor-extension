@@ -1,6 +1,6 @@
 {
   "name": "cell-monitor",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "JupyterLab extension for cell execution monitoring",
   "keywords": [
     "jupyter",
@@ -81,7 +81,7 @@
     "outputDir": "cell_monitor/labextension",
     "schemaDir": "schema",
     "_build": {
-      "load": "static/remoteEntry.85a2b7b1e4ad870c2b2a.js",
+      "load": "static/remoteEntry.6fca4b9431862116e39d.js",
       "extension": "./extension",
       "style": "./style"
     }
