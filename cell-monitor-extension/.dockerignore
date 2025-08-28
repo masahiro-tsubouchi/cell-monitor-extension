@@ -58,3 +58,24 @@ webpack.config.js
 # OS関連
 .DS_Store
 Thumbs.db
+
+# ドキュメントファイル（ビルドに不要）
+docs/
+*.md
+!README.md
+!README_JP.md
+
+# テスト関連ファイル（ビルドに不要）
+TEST/
+Phase-*.md
+test-*.md
+test_*.py
+scripts/test-*.js
+
+# 開発用ファイル（ビルドに不要）
+macos-env.sh
+inject_env_vars.py
+Dockerfile.old
+
+# 手動テスト用ノートブック
+*.ipynb
