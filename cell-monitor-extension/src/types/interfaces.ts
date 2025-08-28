@@ -11,9 +11,7 @@ export interface ISettings {
   emailAddress: string;
   userName: string;
   teamName: string;
-  batchSize: number;
   retryAttempts: number;
-  maxNotifications: number;
   showNotifications: boolean;
 }
 

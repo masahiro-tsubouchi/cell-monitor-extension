@@ -9,7 +9,7 @@
       "type": "string",
       "title": "サーバーURL",
       "description": "セル実行データを送信するFastAPIサーバーのURL",
-      "default": "http://fastapi:8000/api/v1/events"
+      "default": "http://localhost:8000/api/v1/events"
     },
     "emailAddress": {
       "type": "string",
@@ -31,26 +31,10 @@
       "description": "ユーザーの表示名",
       "default": "テスト学生001"
     },
-    "batchSize": {
-      "type": "integer",
-      "title": "バッチサイズ",
-      "description": "サーバーに送信する前に収集する実行回数",
-      "default": 1,
-      "minimum": 1,
-      "maximum": 100
-    },
     "retryAttempts": {
       "type": "integer",
       "title": "再試行回数",
       "description": "データ送信失敗時の再試行回数",
-      "default": 3,
-      "minimum": 0,
-      "maximum": 10
-    },
-    "maxNotifications": {
-      "type": "integer",
-      "title": "最大通知数",
-      "description": "表示する通知の最大数",
       "default": 3,
       "minimum": 0,
       "maximum": 10

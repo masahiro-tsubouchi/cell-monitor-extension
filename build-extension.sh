@@ -23,7 +23,15 @@ fi
 echo "- Dockerコンテナ (extension-builder) を使用してビルドを実行します..."
 # --build: 実行前にイメージの再ビルドを強制
 # --rm: 実行後にコンテナを自動で削除
-docker compose run --build --rm extension-builder
+# macOSではgtimeoutを使用、Linuxではtimeoutを使用
+if command -v gtimeout >/dev/null 2>&1; then
+  gtimeout 600 docker compose run --build --rm extension-builder
+elif command -v timeout >/dev/null 2>&1; then
+  timeout 600 docker compose run --build --rm extension-builder
+else
+  # timeoutコマンドが使用できない場合は通常実行
+  docker compose run --build --rm extension-builder
+fi
 
 # --- 結果確認 ---
 echo
