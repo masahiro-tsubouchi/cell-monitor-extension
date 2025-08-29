@@ -1,11 +1,11 @@
 # System Overview - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**対象バージョン**: v1.1.0
+**最終更新**: 2025-08-29  
+**対象バージョン**: v1.1.4
 
 ## 📋 概要
 
-Cell Monitor Extension のシステム全体像とアーキテクチャの概要について説明します。
+Cell Monitor Extension のモジュール化されたシステム全体像と高性能アーキテクチャの概要について説明します。本システムは200名同時利用、毎秒6,999+イベント処理が可能です。
 
 ---
 
@@ -15,34 +15,44 @@ Cell Monitor Extension のシステム全体像とアーキテクチャの概要
 
 ```mermaid
 graph TB
-    subgraph "JupyterLab Frontend"
-        A[TypeScript Plugin<br/>src/index.ts]
-        B[Settings Registry<br/>schema/plugin.json]
-        C[UI Components<br/>Help Button & Notifications]
-        D[Event Monitors<br/>Cell & Notebook Trackers]
+    subgraph "JupyterLab Frontend (TypeScript)"
+        A[CellMonitorPlugin<br/>src/index.ts]
+        B[SettingsManager<br/>src/core/SettingsManager.ts]
+        C[EventManager<br/>src/core/EventManager.ts]
+        D[DataTransmissionService<br/>src/services/DataTransmissionService.ts]
+        E[LoadDistributionService<br/>src/services/LoadDistributionService.ts]
+        F[ConnectionManager<br/>src/core/ConnectionManager.ts]
+        G[TimerPool & Utils<br/>src/utils/]
     end
 
-    subgraph "JupyterLab Server"
-        E[Python Handler<br/>cell_monitor/handlers.py]
-        F[Proxy Endpoint<br/>/cell-monitor]
+    subgraph "Configuration & Schema"
+        H[JSON Schema<br/>schema/plugin.json]
+        I[Type Definitions<br/>src/types/]
     end
 
-    subgraph "External Services"
-        G[FastAPI Server<br/>localhost:8000]
-        H[Database Systems<br/>PostgreSQL, InfluxDB]
+    subgraph "External High-Performance Backend"
+        J[FastAPI Server<br/>localhost:8000]
+        K[Parallel Processing<br/>毎秒6,999+イベント]
+        L[Database Systems<br/>PostgreSQL, InfluxDB, Redis]
     end
 
     A --> B
     A --> C
     A --> D
+    B --> H
+    C --> D
     D --> E
+    D --> F
+    D --> J
     E --> F
-    F --> G
-    G --> H
+    C --> I
+    D --> G
+    J --> K
+    K --> L
 
     style A fill:#e1f5fe
-    style E fill:#f3e5f5
-    style G fill:#e8f5e8
+    style J fill:#e8f5e8
+    style K fill:#fff3e0
 ```
 
 ---

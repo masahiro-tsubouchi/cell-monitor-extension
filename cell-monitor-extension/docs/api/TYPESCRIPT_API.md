@@ -1,11 +1,11 @@
 # TypeScript API リファレンス - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**対象バージョン**: v1.1.0
+**最終更新**: 2025-08-29  
+**対象バージョン**: v1.1.4
 
 ## 📋 概要
 
-Cell Monitor Extension のTypeScript API仕様の包括的リファレンスです。
+Cell Monitor Extension のモジュール化されたTypeScript API仕様の包括的リファレンスです。v1.1.4のクラスベースアーキテクチャと高性能最適化機能を反映しています。
 
 ---
 
