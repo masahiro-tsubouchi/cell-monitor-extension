@@ -1,11 +1,11 @@
 # TypeScript Interfaces - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**対象バージョン**: v1.1.0
+**最終更新**: 2025-08-29  
+**対象バージョン**: v1.1.4
 
 ## 📋 概要
 
-Cell Monitor Extension のコアインターフェースと型定義の詳細説明です。
+Cell Monitor Extension v1.1.4 のコアインターフェースと型定義の詳細説明です。クラスベース設計に対応したインターフェース群を含みます。
 
 ---
 

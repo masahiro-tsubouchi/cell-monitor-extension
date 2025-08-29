@@ -95,7 +95,7 @@ cell-monitor-extension/
 │       ├── TimerPool.ts      # タイマープール
 │       └── uuid.ts           # UUID生成
 ├── schema/
-│   └── plugin.json           # 設定スキーマ定義（6項目）
+│   └── plugin.json           # 設定スキーマ定義（7項目）
 ├── tests/                    # Jest テストスイート（11ファイル）
 ├── style/                    # CSS スタイル
 └── docs/                     # 技術ドキュメント

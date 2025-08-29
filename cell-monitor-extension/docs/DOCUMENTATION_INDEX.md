@@ -1,12 +1,12 @@
 # Documentation Index - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**ドキュメントバージョン**: 2.0  
-**対象システム**: JupyterLab Cell Monitor Extension v1.1.0
+**最終更新**: 2025-08-29  
+**ドキュメントバージョン**: 2.1  
+**対象システム**: JupyterLab Cell Monitor Extension v1.1.4
 
 ## 📚 ドキュメント全体概要
 
-このディレクトリには、Cell Monitor Extension の包括的なドキュメンテーションが含まれています。AI駆動開発を効率化するため、構造化され、コンテキスト豊富な情報を提供しています。
+このディレクトリには、Cell Monitor Extension v1.1.4 の包括的なドキュメンテーションが含まれています。モジュール化設計と高性能アーキテクチャに対応し、AI駆動開発を効率化するための構造化情報を提供しています。
 
 ---
 

@@ -1,11 +1,11 @@
 # Implementation & Testing - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**対象バージョン**: v1.1.0
+**最終更新**: 2025-08-29  
+**対象バージョン**: v1.1.4
 
 ## 📋 概要
 
-Cell Monitor Extension の実装ガイド、テスト戦略、デバッグ手法の詳細説明です。
+Cell Monitor Extension v1.1.4 のモジュール化設計に基づいた実装ガイド、Jestテスト戦略、デバッグ手法の詳細説明です。
 
 ---
 

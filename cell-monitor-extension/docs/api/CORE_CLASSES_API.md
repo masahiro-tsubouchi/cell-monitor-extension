@@ -279,33 +279,26 @@ class ConnectionManager {
 **ファイル**: `src/utils/TimerPool.ts`
 
 ```typescript
-class TimerPool {
-  private static instance: TimerPool;
-  private timers: Map<string, NodeJS.Timeout> = new Map();
-  private logger = createLogger('TimerPool');
+export class TimerPool {
+  private static activeTimers: Set<number> = new Set();
+  private static readonly MAX_CONCURRENT_TIMERS = 10;
+  private static logger = createLogger('TimerPool');
 
-  static getInstance(): TimerPool
+  static async delay(ms: number): Promise<void>
   
-  setTimeout(
-    callback: () => void,
-    delay: number,
-    id?: string
-  ): string
-
-  clearTimeout(id: string): boolean
-  clearAll(): void
+  private static async waitForAvailableSlot(): Promise<void>
   
-  getStats(): {
-    activeTimers: number;
-    totalCreated: number;
-  }
+  static getActiveCount(): number
+  
+  static clearAll(): void
 }
 ```
 
 **責務**:
 - タイマーリソースの効率的管理
-- メモリリークの防止
-- シングルトンパターンによるグローバル管理
+- メモリリークの防止  
+- 同時実行数制限による最適化
+- 静的メソッドによる軽量実装
 
 ---
 

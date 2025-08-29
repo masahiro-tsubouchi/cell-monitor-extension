@@ -1,11 +1,11 @@
 # JupyterLab Integration Guide - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**対象バージョン**: v1.1.0
+**最終更新**: 2025-08-29  
+**対象バージョン**: v1.1.4
 
 ## 📋 概要
 
-Cell Monitor ExtensionのJupyterLabとの統合方法と、JupyterLabエコシステムとの連携について説明します。
+Cell Monitor Extension v1.1.4 のモジュール化されたJupyterLab統合と、高性能エコシステムとの連携について説明します。本バージョンではJupyterLab 4.2.4と完全互換です。
 
 ---
 

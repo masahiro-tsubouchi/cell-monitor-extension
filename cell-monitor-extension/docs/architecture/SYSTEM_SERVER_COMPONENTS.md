@@ -1,11 +1,11 @@
 # Server Components - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**対象バージョン**: v1.1.0
+**最終更新**: 2025-08-29  
+**対象バージョン**: v1.1.4
 
 ## 📋 概要
 
-Cell Monitor Extension のサーバーサイドコンポーネントの詳細について説明します。
+Cell Monitor Extension のサーバーサイドコンポーネントの詳細について説明します。v1.1.4では直接FastAPIサーバーとの通信が主流となっています。
 
 ---
 

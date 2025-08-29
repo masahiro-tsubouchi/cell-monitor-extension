@@ -1,11 +1,11 @@
 # Event Processing System - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**対象バージョン**: v1.1.0
+**最終更新**: 2025-08-29  
+**対象バージョン**: v1.1.4
 
 ## 📋 概要
 
-Cell Monitor Extension のイベント処理システムの詳細について説明します。
+Cell Monitor Extension の高性能イベント処理システム（毎秒6,999+イベント処理対応）の詳細について説明します。
 
 ---
 
@@ -16,25 +16,35 @@ Cell Monitor Extension のイベント処理システムの詳細について説
 ```mermaid
 sequenceDiagram
     participant Cell as Code Cell
-    participant Monitor as Event Monitor
-    participant Dedup as Deduplicator
-    participant Extractor as Data Extractor
-    participant Sender as HTTP Sender
-    participant Server as Python Handler
+    participant EM as EventManager
+    participant DTS as DataTransmissionService
+    participant LDS as LoadDistributionService
+    participant Pool as ConnectionPool
+    participant FastAPI as FastAPI Server
+    participant Worker as Parallel Workers
 
-    Cell->>Monitor: Execute Signal
-    Monitor->>Dedup: Check Duplicate (500ms window)
-
+    Cell->>EM: Execute Signal
+    EM->>EM: createProgressEvent()
+    EM->>DTS: sendProgressData()
+    DTS->>DTS: executeWithDuplicationPrevention()
+    
     alt Not Duplicate
-        Dedup->>Extractor: Extract Cell Data
-        Extractor->>Extractor: Get Code Content
-        Extractor->>Extractor: Analyze Output
-        Extractor->>Extractor: Calculate Duration
-        Extractor->>Sender: Format Event Data
-        Sender->>Server: HTTP POST /cell-monitor
-        Server-->>Sender: Response
-    else Duplicate
-        Dedup->>Monitor: Skip Processing
+        DTS->>LDS: getOptimalEndpoint()
+        LDS->>LDS: checkEndpointHealth()
+        LDS-->>DTS: Best Server URL
+        DTS->>Pool: HTTP Connection
+        Pool->>FastAPI: POST /api/v1/events
+        FastAPI->>Worker: Parallel Processing
+        Worker-->>FastAPI: Processing Complete
+        FastAPI-->>Pool: Response
+        Pool-->>DTS: Success
+    else Duplicate Request
+        DTS->>DTS: Return Cached Promise
+    end
+    
+    alt Error Handling
+        DTS->>DTS: sendWithRetry()
+        DTS->>DTS: handleTransmissionError()
     end
 ```
 

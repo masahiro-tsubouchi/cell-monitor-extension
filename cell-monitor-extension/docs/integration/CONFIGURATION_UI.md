@@ -1,11 +1,11 @@
 # Configuration & UI Integration - Cell Monitor Extension
 
-**最終更新**: 2025-08-24  
-**対象バージョン**: v1.1.0
+**最終更新**: 2025-08-29  
+**対象バージョン**: v1.1.4
 
 ## 📋 概要
 
-Cell Monitor ExtensionのJupyterLab設定システムとUI統合機能について説明します。
+Cell Monitor Extension v1.1.4 のリアルタイムバリデーション付きJupyterLab設定システムとモジュール化されたUI統合機能について説明します。
 
 ---
 
