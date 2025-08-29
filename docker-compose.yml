@@ -210,6 +210,25 @@ services:
       - HOST_GID=${HOST_GID:-1000}
       - NODE_ENV=${NODE_ENV:-development}
 
+  # --- 高速.whl専用ビルドサービス ---
+  extension-builder-fast:
+    build:
+      context: ./cell-monitor-extension
+      dockerfile: Dockerfile.build-fast
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.12-slim}
+        - NODE_MAJOR_VERSION=${NODE_MAJOR_VERSION:-20}
+        - JUPYTERLAB_VERSION=${JUPYTERLAB_VERSION:-4.0}
+    volumes:
+      # ビルド成果物(.whl)をホストに反映させるためにマウント
+      - ./cell-monitor-extension:/app
+      # 高速ビルド用: node_modulesボリュームを使用しない（最小限の依存のみ）
+    environment:
+      # 生成されるファイルの所有者をホストユーザーに合わせる
+      - HOST_UID=${HOST_UID:-1000}
+      - HOST_GID=${HOST_GID:-1000}
+      - NODE_ENV=${NODE_ENV:-production}
+
 volumes:
   postgres_data:
   influxdb_data:

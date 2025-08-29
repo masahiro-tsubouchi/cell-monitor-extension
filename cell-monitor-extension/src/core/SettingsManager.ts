@@ -329,8 +329,8 @@ export class SettingsManager {
   } {
     if (!this.settings) {
       return {
-        showNotifications: true,
-        animationEnabled: true
+        showNotifications: false,
+        animationEnabled: false
       };
     }
     
@@ -338,8 +338,8 @@ export class SettingsManager {
     const animationEnabled = this.settings.get('animationEnabled')?.composite as boolean;
     
     return {
-      showNotifications: showNotifications !== undefined ? showNotifications : true,
-      animationEnabled: animationEnabled !== undefined ? animationEnabled : true
+      showNotifications: showNotifications !== undefined ? showNotifications : false,
+      animationEnabled: animationEnabled !== undefined ? animationEnabled : false
     };
   }
 }

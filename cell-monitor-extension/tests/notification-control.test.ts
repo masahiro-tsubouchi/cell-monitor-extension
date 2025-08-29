@@ -40,11 +40,11 @@ describe('Cell Monitor Notification Control', () => {
       // 実装後は実際の通知非表示ロジックをテストする
     });
 
-    it('should use default value true for showNotifications', () => {
+    it('should use default value false for showNotifications', () => {
       // デフォルト値のテスト
       // 実装後はsettingsの初期化ロジックをテストする
-      const defaultShowNotifications = true;
-      expect(defaultShowNotifications).toBe(true);
+      const defaultShowNotifications = false;
+      expect(defaultShowNotifications).toBe(false);
     });
   });
 

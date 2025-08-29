@@ -42,14 +42,14 @@
     "showNotifications": {
       "type": "boolean",
       "title": "通知表示",
-      "description": "データがサーバーに送信された時に通知を表示する",
-      "default": true
+      "description": "重要なシステム通知のみ表示（通常はOFFを推奨）",
+      "default": false
     },
     "animationEnabled": {
       "type": "boolean",
       "title": "ヘルプボタンアニメーション",
-      "description": "ヘルプ要請中にボタンのパルスアニメーションを有効にする",
-      "default": true
+      "description": "視覚効果の制御（通常はOFFを推奨）",
+      "default": false
     }
   }
 }

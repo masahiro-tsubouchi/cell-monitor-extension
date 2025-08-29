@@ -33,12 +33,12 @@ describe('Cell Monitor Settings Schema', () => {
 
     it('should have correct description for showNotifications', () => {
       const showNotifications = schema.properties.showNotifications;
-      expect(showNotifications.description).toBe('データがサーバーに送信された時に通知を表示する');
+      expect(showNotifications.description).toBe('重要なシステム通知のみ表示（通常はOFFを推奨）');
     });
 
-    it('should have default value true for showNotifications', () => {
+    it('should have default value false for showNotifications', () => {
       const showNotifications = schema.properties.showNotifications;
-      expect(showNotifications.default).toBe(true);
+      expect(showNotifications.default).toBe(false);
     });
   });
 
