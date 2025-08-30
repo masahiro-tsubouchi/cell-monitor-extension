@@ -74,10 +74,6 @@ function App() {
 
     // 開発環境でのデバッグ情報
     if (process.env.NODE_ENV === 'development') {
-      console.log('🚀 Phase 3: Type Safety & Validation Enabled');
-      console.log('✅ Global Error Handlers: Active');
-      console.log('✅ Runtime Validation: Active');
-      console.log('✅ Error Boundaries: Active');
     }
   }, []);
 

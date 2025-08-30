@@ -90,7 +90,6 @@ export const PerformanceMonitoring: React.FC = () => {
           setSummary(summaryData);
         }
       } catch (error) {
-        console.error('パフォーマンスデータ取得エラー:', error);
       }
     };
 

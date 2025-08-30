@@ -95,14 +95,12 @@ export const StudentDetailPage: React.FC = () => {
 
     try {
       await dashboardAPI.dismissHelpRequest(emailAddress);
-      console.log(`Help request dismissed for student: ${emailAddress}`);
       // データを再読み込み
       setTimeout(() => {
         refreshData();
         loadStudentDetail();
       }, 1000);
     } catch (error: any) {
-      console.error('Failed to dismiss help request:', error);
       alert('対応完了の記録に失敗しました: ' + error.message);
     }
   };

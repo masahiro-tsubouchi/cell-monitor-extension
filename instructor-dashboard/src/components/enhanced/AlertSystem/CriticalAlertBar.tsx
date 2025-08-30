@@ -97,7 +97,6 @@ export const CriticalAlertBar: React.FC<CriticalAlertBarProps> = memo(({
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.3);
       } catch (error) {
-        console.warn('Audio notification failed:', error);
       }
     }
   }, [helpStudents.length, soundAlertEnabled]);

@@ -70,7 +70,6 @@ export const AdminCompressionStats: React.FC = () => {
         const history = performanceMonitor.getMetricsHistory();
         setMetricsHistory(history.slice(-20)); // 最新20件
       } catch (error) {
-        console.error('管理画面統計取得エラー:', error);
       }
     };
 

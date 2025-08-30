@@ -106,7 +106,6 @@ export const SystemSettings: React.FC = () => {
         const parsed = JSON.parse(savedConfig);
         setConfig({ ...defaultConfig, ...parsed });
       } catch (error) {
-        console.error('設定読み込みエラー:', error);
       }
     }
   }, []);
@@ -131,7 +130,6 @@ export const SystemSettings: React.FC = () => {
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      console.error('設定保存エラー:', error);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     }

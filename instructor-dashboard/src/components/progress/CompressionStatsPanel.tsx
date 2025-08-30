@@ -60,7 +60,6 @@ export const CompressionStatsPanel: React.FC = () => {
         const comparison = getLoadComparison();
         setLoadComparison(comparison);
       } catch (error) {
-        console.error('統計取得エラー:', error);
       }
     };
 

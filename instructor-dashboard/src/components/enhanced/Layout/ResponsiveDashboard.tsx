@@ -108,7 +108,6 @@ const useDeviceDetection = () => {
         await document.exitFullscreen();
       }
     } catch (error) {
-      console.warn('Fullscreen not supported:', error);
     }
   };
 
@@ -238,7 +237,6 @@ export const ResponsiveDashboard: React.FC<ResponsiveDashboardProps> = memo(({
     {
       icon: <FilterIcon />,
       name: 'フィルター',
-      onClick: () => console.log('Filter clicked')
     },
     {
       icon: isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />,
@@ -362,7 +360,7 @@ export const ResponsiveDashboard: React.FC<ResponsiveDashboardProps> = memo(({
               icon={action.icon}
               tooltipTitle={action.name}
               onClick={() => {
-                action.onClick();
+                action.onClick?.();
                 setSpeedDialOpen(false);
               }}
               sx={{

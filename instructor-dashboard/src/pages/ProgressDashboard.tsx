@@ -180,8 +180,6 @@ export const ProgressDashboard: React.FC = () => {
   });
 
   const [expandedTeamsCount, setExpandedTeamsCount] = useState<number>(0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [showFilter, setShowFilter] = useState<boolean>(false);
 
   // Store から状態取得
   const {
@@ -200,9 +198,7 @@ export const ProgressDashboard: React.FC = () => {
     flushQueuedUpdates
   } = useProgressDashboardStore();
 
-  // Worker 処理フック
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const workerProcessing = useWorkerProcessing();
+  // Worker 処理フック (unused)
 
 
   // 共通ダッシュボードロジック
@@ -223,7 +219,6 @@ export const ProgressDashboard: React.FC = () => {
   const _webSocketManager = useWebSocketManager({
     // 学生進捗更新ハンドラー
     onStudentProgressUpdate: (data: StudentActivity) => {
-      console.log('📊 Student progress update (unified):', data);
       updateStudentStatus(data.emailAddress, {
         userName: data.userName,
         currentNotebook: data.currentNotebook,
@@ -236,7 +231,6 @@ export const ProgressDashboard: React.FC = () => {
     
     // セル実行イベントハンドラー
     onCellExecution: (data: any) => {
-      console.log('⚡ Cell execution event (unified):', data);
       updateStudentStatus(data.emailAddress, {
         cellExecutions: (data.cellExecutions || 1),
         lastActivity: '今',
@@ -246,7 +240,6 @@ export const ProgressDashboard: React.FC = () => {
     
     // ヘルプ要請ハンドラー
     onHelpRequest: (data: any) => {
-      console.log('🆘 Help request event (unified):', data);
       updateStudentStatus(data.emailAddress, {
         isRequestingHelp: true,
         lastActivity: '今',
@@ -258,7 +251,6 @@ export const ProgressDashboard: React.FC = () => {
     
     // ヘルプ解決ハンドラー
     onHelpResolved: (data: any) => {
-      console.log('✅ Help resolved event (unified):', data);
       updateStudentStatus(data.emailAddress, {
         isRequestingHelp: false,
         lastActivity: '今'
@@ -269,12 +261,10 @@ export const ProgressDashboard: React.FC = () => {
     
     // 接続状態変化ハンドラー
     onConnectionChange: (state: string) => {
-      console.log(`🔌 WebSocket connection state changed: ${state}`);
     },
     
     // エラーハンドラー
     onError: (error: any) => {
-      console.error('❌ Dashboard WebSocket error (unified):', error);
     }
   });
 
@@ -341,8 +331,6 @@ export const ProgressDashboard: React.FC = () => {
       // データ再取得
       refreshData();
     } catch (error) {
-      console.error('エラー解除に失敗:', error);
-      // TODO: エラー表示機能を後で追加
     }
   }, [selectStudent, refreshData]);
 
@@ -354,39 +342,29 @@ export const ProgressDashboard: React.FC = () => {
       // データ再取得
       refreshData();
     } catch (error) {
-      console.error('ヘルプ解除に失敗:', error);
-      // TODO: エラー表示機能を後で追加
     }
   }, [selectStudent, refreshData]);
 
-  const handleToggleFilter = useCallback(() => {
-    setShowFilter(prev => !prev);
-  }, []);
 
   const handleSortByPriority = useCallback(() => {
     // 緊急度順でソート（ヘルプ > エラー > アクティブ > その他）
     // Note: 実際のソート機能は各表示コンポーネントで実装
-    console.log('Priority sort triggered');
   }, []);
 
   const handleEscape = useCallback(() => {
-    setShowFilter(false);
     selectStudent(null);
   }, [selectStudent]);
 
-  // Phase 1.3: キーボードショートカット設定
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { shortcuts } = useKeyboardShortcuts({
+  // Phase 1.3: キーボードショートカット設定 (unused)
+  useKeyboardShortcuts({
     students,
     onHelpFocus: handleHelpFocus,
     onRefresh: handleRefresh,
-    onToggleFilter: handleToggleFilter,
     onSortByPriority: handleSortByPriority,
     onEscape: handleEscape
   });
 
   // レンダリング統計（開発時のみ）
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const renderStats = useMemo(() => ({
     optimizedComponents: 5, // OptimizedStudentCard, VirtualizedStudentList, etc.
     lazyComponents: 4 // LazyActivityChart, LazyTeamMapView, etc.

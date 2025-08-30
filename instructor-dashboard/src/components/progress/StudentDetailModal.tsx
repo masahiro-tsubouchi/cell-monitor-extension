@@ -133,7 +133,6 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
       const data = await dashboardAPI.getStudentActivity(student.emailAddress);
       setStudentDetail(data);
     } catch (err: any) {
-      console.error('Failed to load student detail:', err);
       setError('学生詳細データの読み込みに失敗しました');
     } finally {
       setLoading(false);

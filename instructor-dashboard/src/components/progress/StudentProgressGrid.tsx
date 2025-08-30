@@ -223,7 +223,6 @@ export const StudentProgressGrid: React.FC<StudentProgressGridProps> = ({
   const handleDismissHelp = async (userId: string) => {
     try {
       await dashboardAPI.dismissHelpRequest(userId);
-      console.log(`Help request marked as completed for student: ${userId}`);
 
       // Refresh the dashboard data to reflect the change
       if (onRefresh) {
@@ -232,7 +231,6 @@ export const StudentProgressGrid: React.FC<StudentProgressGridProps> = ({
         }, 1000); // Give some time for the help session to stop
       }
     } catch (error: any) {
-      console.error('Failed to mark help request as completed:', error);
       // You could add a toast notification here
       alert('対応完了の記録に失敗しました: ' + error.message);
     }

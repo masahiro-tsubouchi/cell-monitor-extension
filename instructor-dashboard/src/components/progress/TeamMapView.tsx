@@ -167,7 +167,6 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
         // setContainerSize({ width, height }); // 未使用のため一時的にコメント
-        console.debug('Container resized:', { width, height });
       }
     }, 16);
 
@@ -219,7 +218,6 @@ export const TeamMapView: React.FC<TeamMapViewProps> = ({ students, teams }) => 
           setMapData(latestData);
         }
       } catch (err) {
-        console.warn('MAP自動リフレッシュエラー:', err);
       }
     }, 30000);
 

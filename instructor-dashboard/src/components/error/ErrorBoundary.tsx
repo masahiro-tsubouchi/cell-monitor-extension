@@ -92,11 +92,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     // コンソールログ（開発環境）
     if (process.env.NODE_ENV === 'development') {
-      console.group('🚨 React Error Boundary');
-      console.error('Error:', error);
-      console.error('Error Info:', errorInfo);
-      console.error('Component Stack:', errorInfo.componentStack);
-      console.groupEnd();
     }
   }
 
@@ -161,7 +156,6 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
         alert('エラー情報がクリップボードにコピーされました。');
       })
       .catch(() => {
-        console.error('Failed to copy error data to clipboard');
       });
   };
 
@@ -355,7 +349,6 @@ export const ComponentErrorBoundary: React.FC<{
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
-        console.error(`Error in ${componentName}:`, error, errorInfo);
       }}
       fallback={({ error, resetError }) => (
         <Alert 
