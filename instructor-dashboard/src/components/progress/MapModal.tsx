@@ -114,6 +114,7 @@ export const MapModal: React.FC<MapModalProps> = ({
                   maxHeight: 'none',
                   width: '100%',
                   height: 'auto',
+                  objectFit: 'contain',
                   userSelect: 'none',
                   pointerEvents: 'none'
                 }}
