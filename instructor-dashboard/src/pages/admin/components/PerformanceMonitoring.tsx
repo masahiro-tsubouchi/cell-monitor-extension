@@ -119,6 +119,32 @@ export const PerformanceMonitoring: React.FC = () => {
     return `${seconds}秒`;
   };
 
+  /**
+   * 実際の帯域幅削減率計算（実測値ベース）
+   */
+  const calculateBandwidthReductionRate = (summaryData: MetricsSummary): number => {
+    // 実測データから帯域幅削減率を計算
+    if (!realTimeStats || !realTimeStats.totalDataTransferred) return 0;
+    
+    const fullUpdateSize = realTimeStats.totalDataTransferred;
+    const deltaSize = summaryData.totalBandwidthSaved;
+    const estimatedFullSize = fullUpdateSize + deltaSize;
+    
+    if (estimatedFullSize === 0) return 0;
+    return Math.round((deltaSize / estimatedFullSize) * 100);
+  };
+
+  /**
+   * JupyterLab環境特化の閾値判定
+   */
+  const JUPYTER_PERFORMANCE_THRESHOLDS = {
+    LCP_THRESHOLD: 3000,      // ノートブック読み込み時間考慮
+    FID_THRESHOLD: 150,       // セル実行レスポンス時間
+    PROCESSING_TIME: 50,      // 最大処理時間ms
+    MIN_COMPRESSION: 85,      // 最低圧縮率%
+    TARGET_DELTA_RATIO: 80    // 目標差分率%
+  };
+
   const handleToggleMonitoring = () => {
     if (performanceMonitoring) {
       stopPerformanceMonitoring();
@@ -245,28 +271,31 @@ export const PerformanceMonitoring: React.FC = () => {
             </Alert>
           )}
 
-          {/* サマリーカード */}
+          {/* 最適化されたサマリーカード */}
           {summary && (
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 3, mb: 3 }}>
-              {/* データ圧縮率 */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 3, mb: 3 }}>
+              {/* データ処理効率 */}
               <Card sx={{ textAlign: 'center', height: '100%' }}>
                 <CardContent>
-                  <DataIcon sx={{ fontSize: 32, color: '#2196f3', mb: 1 }} />
+                  <CompressIcon sx={{ fontSize: 32, color: '#2196f3', mb: 1 }} />
                   <Typography variant="h4" fontWeight="bold" color="primary">
                     {Math.round(summary.avgDataReduction)}%
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    平均データ圧縮率
+                    データ処理効率
                   </Typography>
                   <LinearProgress 
                     variant="determinate" 
                     value={Math.min(summary.avgDataReduction, 100)}
                     sx={{ mt: 1, height: 4, borderRadius: 2 }}
                   />
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                    平均圧縮率
+                  </Typography>
                 </CardContent>
               </Card>
 
-              {/* 処理パフォーマンス */}
+              {/* システム応答性 */}
               <Card sx={{ textAlign: 'center', height: '100%' }}>
                 <CardContent>
                   <SpeedIcon sx={{ fontSize: 32, color: '#4caf50', mb: 1 }} />
@@ -274,7 +303,7 @@ export const PerformanceMonitoring: React.FC = () => {
                     {(summary.avgProcessingTime || 0).toFixed(1)}ms
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    平均処理時間
+                    システム応答性
                   </Typography>
                   <Chip
                     label={`${summary.totalUpdates}回更新`}
@@ -285,7 +314,7 @@ export const PerformanceMonitoring: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* セッション統計 */}
+              {/* セッション統計（統合） */}
               <Card sx={{ textAlign: 'center', height: '100%' }}>
                 <CardContent>
                   <TimelineIcon sx={{ fontSize: 32, color: '#ff9800', mb: 1 }} />
@@ -293,15 +322,15 @@ export const PerformanceMonitoring: React.FC = () => {
                     {formatDuration(summary.sessionDuration)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    監視セッション時間
+                    セッション統計
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    差分更新率: {summary.deltaRatio.toFixed(1)}%
+                  <Typography variant="caption" color="success.main" display="block">
+                    差分率: {summary.deltaRatio.toFixed(1)}%
                   </Typography>
                 </CardContent>
               </Card>
 
-              {/* 帯域幅削減 */}
+              {/* ネットワーク効率（統合・実測値） */}
               <Card sx={{ textAlign: 'center', height: '100%' }}>
                 <CardContent>
                   <NetworkIcon sx={{ fontSize: 32, color: '#9c27b0', mb: 1 }} />
@@ -309,32 +338,10 @@ export const PerformanceMonitoring: React.FC = () => {
                     {formatBytes(summary.totalBandwidthSaved)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    累計帯域幅削減
+                    ネットワーク効率
                   </Typography>
                   <Typography variant="caption" color="success.main" display="block">
-                    推定削減率: 90%
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card sx={{ textAlign: 'center', height: '100%' }}>
-                <CardContent>
-                  <NetworkIcon sx={{ fontSize: 32, color: '#f44336', mb: 1 }} />
-                  <Typography variant="h4" fontWeight="bold" color="error.main">
-                    {formatBytes(summary.totalBandwidthSaved)}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    帯域幅削減量
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card sx={{ textAlign: 'center', height: '100%' }}>
-                <CardContent>
-                  <TimelineIcon sx={{ fontSize: 32, color: '#795548', mb: 1 }} />
-                  <Typography variant="h4" fontWeight="bold" color="text.primary">
-                    {formatDuration(summary.sessionDuration)}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    監視時間
+                    削減率: {calculateBandwidthReductionRate(summary)}%
                   </Typography>
                 </CardContent>
               </Card>
@@ -499,41 +506,45 @@ export const PerformanceMonitoring: React.FC = () => {
                           {(comparison.improvements?.dataSizeReduction || 0).toFixed(1)}%
                         </Typography>
                         <Typography variant="body2">データサイズ削減</Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min(comparison.improvements?.dataSizeReduction || 0, 100)}
-                          color="success"
-                          sx={{ mt: 1, height: 6, borderRadius: 3 }}
+                        <Chip 
+                          label={(comparison.improvements?.dataSizeReduction || 0) > JUPYTER_PERFORMANCE_THRESHOLDS.MIN_COMPRESSION ? "優秀" : "要改善"}
+                          color={(comparison.improvements?.dataSizeReduction || 0) > JUPYTER_PERFORMANCE_THRESHOLDS.MIN_COMPRESSION ? "success" : "warning"}
+                          size="small"
+                          sx={{ mt: 1 }}
                         />
                       </Box>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h4" fontWeight="bold" color="primary">
-                          {(comparison.improvements?.processingSpeedup || 0).toFixed(1)}%
+                          {(comparison.improvements?.processingSpeedup || 0).toFixed(1)}倍
                         </Typography>
                         <Typography variant="body2">処理速度向上</Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min(comparison.improvements?.processingSpeedup || 0, 100)}
-                          sx={{ mt: 1, height: 6, borderRadius: 3 }}
+                        <Chip 
+                          label={(comparison.improvements?.processingSpeedup || 0) > 2 ? "優秀" : "標準"}
+                          color={(comparison.improvements?.processingSpeedup || 0) > 2 ? "success" : "default"}
+                          size="small"
+                          sx={{ mt: 1 }}
                         />
                       </Box>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h4" fontWeight="bold" color="secondary.main">
                           {(comparison.improvements?.memoryReduction || 0).toFixed(1)}%
                         </Typography>
-                        <Typography variant="body2">メモリ削減</Typography>
+                        <Typography variant="body2">メモリ効率化</Typography>
                         <LinearProgress
                           variant="determinate"
                           value={Math.min(comparison.improvements?.memoryReduction || 0, 100)}
                           color="secondary"
-                          sx={{ mt: 1, height: 6, borderRadius: 3 }}
+                          sx={{ mt: 1, height: 4, borderRadius: 2 }}
                         />
                       </Box>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h4" fontWeight="bold" color="warning.main">
                           {formatBytes(comparison.improvements?.bandwidthSavings || 0)}
                         </Typography>
-                        <Typography variant="body2">帯域幅削減/分</Typography>
+                        <Typography variant="body2">ネットワーク効率化</Typography>
+                        <Typography variant="caption" color="success.main">
+                          /分間削減量
+                        </Typography>
                       </Box>
                     </Box>
                   </Paper>

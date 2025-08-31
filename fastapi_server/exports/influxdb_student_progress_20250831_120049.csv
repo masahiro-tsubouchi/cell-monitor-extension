@@ -1,0 +1,5 @@
+time,measurement,result,table,emailAddress,event,eventId,resolvedBy,sessionId,success,userName
+2025-08-30T23:21:06.799289+00:00,student_progress,_result,0,student001@example.com,error_resolved,1e0ece3c-b8ae-44f7-a0db-56831bf0ff81,instructor,dashboard-resolve-student001@example.com,True,student001
+2025-08-31T11:42:21.689744+00:00,student_progress,_result,0,student001@example.com,error_resolved,18a77e38-a31c-4e09-b452-de54bfa7ef5e,instructor,dashboard-resolve-student001@example.com,True,student001
+2025-08-30T23:21:19.842809+00:00,student_progress,_result,1,student001@example.com,help_stop,88d8c037-ebdb-4ee4-ba8f-c127e863f6fd,,dashboard-dismiss-student001@example.com,True,student001
+2025-08-31T01:54:44.762869+00:00,student_progress,_result,1,student001@example.com,help_stop,26ff10e4-e0d0-46fd-9aef-0e8257a50f66,,dashboard-dismiss-student001@example.com,True,student001

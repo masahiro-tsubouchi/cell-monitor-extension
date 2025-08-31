@@ -38,7 +38,7 @@ services:
       # 拡張機能配布用ディレクトリをマウント（手動インストール用）
       - ./cell-monitor-extension/dist:/app/dist
     environment:
-      - JUPYTER_TOKEN=${JUPYTER_TOKEN}
+      # - JUPYTER_TOKEN=${JUPYTER_TOKEN}
       - CELL_MONITOR_TEST_MODE=${CELL_MONITOR_TEST_MODE:-true}
       - CELL_MONITOR_SERVER_URL=${CELL_MONITOR_SERVER_URL:-http://localhost:8000/api/v1/events}
       - NODE_ENV=${NODE_ENV:-development}
