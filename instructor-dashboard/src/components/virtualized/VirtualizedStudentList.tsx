@@ -9,7 +9,7 @@ import { Box, Typography, TextField, InputAdornment, ToggleButtonGroup, ToggleBu
 import { Search as SearchIcon, Sort as SortIcon } from '@mui/icons-material';
 import { StudentActivity } from '../../services/dashboardAPI';
 import { useOptimizedStudentList, StudentFilter } from '../../hooks/useOptimizedStudentList';
-import { OptimizedStudentCard } from '../optimized/OptimizedStudentCard';
+import { OptimizedStudentCard } from '../enhanced/StudentDisplay/OptimizedStudentCard';
 
 interface VirtualizedStudentListProps {
   students: StudentActivity[];
@@ -38,10 +38,9 @@ const StudentRow: React.FC<ListChildComponentProps> = memo(({ index, style, data
     <div style={style}>
       <Box sx={{ p: 1 }}>
         <OptimizedStudentCard
-          studentData={studentData}
+          student={studentData.original}
           onClick={onStudentClick}
           compact={false}
-          showTeam={true}
         />
       </Box>
     </div>

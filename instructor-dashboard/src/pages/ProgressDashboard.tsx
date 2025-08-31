@@ -27,7 +27,6 @@ import {
   Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useProgressDashboardStore } from '../stores/progressDashboardStore';
-import { useWorkerProcessing } from '../hooks/useWorkerProcessing';
 import { OptimizedTeamGrid } from '../components/optimized/OptimizedTeamGrid';
 import { VirtualizedStudentList } from '../components/virtualized/VirtualizedStudentList';
 import {
@@ -37,7 +36,6 @@ import {
   VisibilityBasedLoader,
   SkeletonLoader
 } from '../components/lazy/LazyComponentLoader';
-// import { EnhancedMetricsPanel } from '../components/enhanced/MetricsPanel'; // 将来使用予定
 import { CriticalAlertBar } from '../components/enhanced/AlertSystem';
 import { KeyboardShortcutsHelp } from '../components/enhanced/KeyboardHelp';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -198,7 +196,6 @@ export const ProgressDashboard: React.FC = () => {
     flushQueuedUpdates
   } = useProgressDashboardStore();
 
-  // Worker 処理フック (unused)
 
 
   // 共通ダッシュボードロジック

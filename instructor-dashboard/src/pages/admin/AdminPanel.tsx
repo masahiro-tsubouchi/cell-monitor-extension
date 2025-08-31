@@ -19,7 +19,6 @@ import {
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
-  Analytics as AnalyticsIcon,
   Speed as SpeedIcon,
   Home as HomeIcon,
   AdminPanelSettings as AdminIcon,
@@ -28,7 +27,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 // 管理画面専用コンポーネント
-import { AdminCompressionStats } from './components/AdminCompressionStats';
 import { SystemSettings } from './components/SystemSettings';
 import { PerformanceMonitoring } from './components/PerformanceMonitoring';
 import { WorkerCompatibilityTest } from './components/WorkerCompatibilityTest';
@@ -121,15 +119,15 @@ export const AdminPanel: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Phase 1実装状況の表示 */}
-      <Alert severity="info" sx={{ mb: 3 }}>
+      {/* 統合完了状況の表示 */}
+      <Alert severity="success" sx={{ mb: 3 }}>
         <Typography variant="body2" fontWeight="bold">
-          📋 Phase 1 実装完了
+          📋 統合パフォーマンス監視実装完了
         </Typography>
         <Typography variant="caption" display="block">
-          • 差分更新統計の管理画面移行 ✅
+          • 差分更新統計とパフォーマンス監視の統合 ✅
           • システム設定管理UI ✅
-          • パフォーマンス監視ダッシュボード ✅
+          • Worker互換性テスト ✅
         </Typography>
       </Alert>
 
@@ -151,19 +149,9 @@ export const AdminPanel: React.FC = () => {
             }}
           >
             <Tab
-              icon={<AnalyticsIcon />}
-              label="差分更新統計"
-              {...a11yProps(0)}
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                }
-              }}
-            />
-            <Tab
               icon={<SpeedIcon />}
-              label="パフォーマンス監視"
-              {...a11yProps(1)}
+              label="統合パフォーマンス監視"
+              {...a11yProps(0)}
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(76, 175, 80, 0.04)'
@@ -173,7 +161,7 @@ export const AdminPanel: React.FC = () => {
             <Tab
               icon={<SettingsIcon />}
               label="システム設定"
-              {...a11yProps(2)}
+              {...a11yProps(1)}
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(255, 152, 0, 0.04)'
@@ -183,7 +171,7 @@ export const AdminPanel: React.FC = () => {
             <Tab
               icon={<WorkerIcon />}
               label="Worker テスト"
-              {...a11yProps(3)}
+              {...a11yProps(2)}
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(156, 39, 176, 0.04)'
@@ -195,18 +183,14 @@ export const AdminPanel: React.FC = () => {
 
         {/* タブコンテンツ */}
         <TabPanel value={currentTab} index={0}>
-          <AdminCompressionStats />
-        </TabPanel>
-
-        <TabPanel value={currentTab} index={1}>
           <PerformanceMonitoring />
         </TabPanel>
 
-        <TabPanel value={currentTab} index={2}>
+        <TabPanel value={currentTab} index={1}>
           <SystemSettings />
         </TabPanel>
 
-        <TabPanel value={currentTab} index={3}>
+        <TabPanel value={currentTab} index={2}>
           <WorkerCompatibilityTest />
         </TabPanel>
       </Paper>
@@ -216,7 +200,7 @@ export const AdminPanel: React.FC = () => {
       {/* フッター情報 */}
       <Box sx={{ textAlign: 'center', mt: 4, py: 2 }}>
         <Typography variant="caption" color="text.secondary">
-          JupyterLab Cell Monitor Extension v2.0 - 管理画面 Phase 1
+          JupyterLab Cell Monitor Extension v2.0 - 統合パフォーマンス監視
         </Typography>
         <Typography variant="caption" color="text.secondary" display="block">
           最終更新: {new Date().toLocaleString('ja-JP')}
