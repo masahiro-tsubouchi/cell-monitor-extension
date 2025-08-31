@@ -8,7 +8,6 @@ import { useState, useEffect } from 'react';
 export interface OptimizationConfig {
   useVirtualizedList: boolean;
   useOptimizedCards: boolean;
-  useWorkerProcessing: boolean;
   useLazyLoading: boolean;
   usePerformanceMonitoring: boolean;
   useTeamBasedGrid: boolean; // 新機能: チームベースグリッド
@@ -17,7 +16,6 @@ export interface OptimizationConfig {
 export const DEFAULT_OPTIMIZATION: OptimizationConfig = {
   useVirtualizedList: true,
   useOptimizedCards: true,
-  useWorkerProcessing: true,
   useLazyLoading: true,
   usePerformanceMonitoring: process.env.NODE_ENV === 'development',
   useTeamBasedGrid: true // デフォルトでチームベースグリッド有効
@@ -94,7 +92,6 @@ export const OPTIMIZATION_PRESETS = {
   minimal: {
     useVirtualizedList: false,
     useOptimizedCards: false,
-    useWorkerProcessing: false,
     useLazyLoading: false,
     usePerformanceMonitoring: false,
     useTeamBasedGrid: false
@@ -103,7 +100,6 @@ export const OPTIMIZATION_PRESETS = {
   balanced: {
     useVirtualizedList: true,
     useOptimizedCards: true,
-    useWorkerProcessing: false,
     useLazyLoading: true,
     usePerformanceMonitoring: false,
     useTeamBasedGrid: true
@@ -112,7 +108,6 @@ export const OPTIMIZATION_PRESETS = {
   maximum: {
     useVirtualizedList: true,
     useOptimizedCards: true,
-    useWorkerProcessing: true,
     useLazyLoading: true,
     usePerformanceMonitoring: true,
     useTeamBasedGrid: true
@@ -123,7 +118,6 @@ export const OPTIMIZATION_PRESETS = {
 export const OPTIMIZATION_DESCRIPTIONS = {
   useVirtualizedList: '仮想スクロールによる大量データ表示の最適化',
   useOptimizedCards: 'React.memoによるカードコンポーネントの最適化',
-  useWorkerProcessing: 'Web Workerによる重い処理の並列化',
   useLazyLoading: 'コンポーネントの遅延読み込みによる初期ロード最適化',
   usePerformanceMonitoring: 'Core Web Vitalsとパフォーマンス統計の監視',
   useTeamBasedGrid: 'チーム単位でのグリッド表示（個人表示から変更）'

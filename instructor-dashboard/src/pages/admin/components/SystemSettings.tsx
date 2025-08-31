@@ -11,28 +11,19 @@ import {
   Typography,
   Switch,
   FormControlLabel,
-  TextField,
   Button,
   Divider,
   Alert,
-  Chip,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Slider,
   Paper,
   List,
   ListItem,
   ListItemText,
-  ListItemIcon
+  ListItemIcon,
+  Tooltip
 } from '@mui/material';
 import {
-  // Settings as SettingsIcon,
   Save as SaveIcon,
   RestoreOutlined as RestoreIcon,
-  Wifi as WebSocketIcon,
-  Refresh as RefreshIcon,
   Speed as SpeedIcon,
   Security as SecurityIcon,
   Storage as StorageIcon,
@@ -43,50 +34,33 @@ import {
 import { useProgressDashboardStore } from '../../../stores/progressDashboardStore';
 
 interface SystemConfig {
-  // 差分更新設定
+  // 核心機能（必須）
   deltaUpdateEnabled: boolean;
-  compressionThreshold: number;
-  batchSize: number;
-  
-  // リフレッシュ設定
   autoRefreshEnabled: boolean;
-  refreshInterval: number;
-  smartRefreshEnabled: boolean;
   
-  // WebSocket設定
-  websocketEnabled: boolean;
-  reconnectAttempts: number;
-  heartbeatInterval: number;
-  
-  // パフォーマンス設定
+  // 運用支援（推奨）
   performanceMonitoringEnabled: boolean;
-  metricsRetentionDays: number;
+  debugModeEnabled: boolean;
+  
+  // 運用柔軟性（新規）
+  websocketFallbackEnabled: boolean;
   
   // セキュリティ設定
   adminAccessEnabled: boolean;
-  debugModeEnabled: boolean;
 }
 
 const defaultConfig: SystemConfig = {
   deltaUpdateEnabled: true,
-  compressionThreshold: 0.1,
-  batchSize: 50,
   autoRefreshEnabled: true,
-  refreshInterval: 5000,
-  smartRefreshEnabled: true,
-  websocketEnabled: true,
-  reconnectAttempts: 3,
-  heartbeatInterval: 30000,
   performanceMonitoringEnabled: false,
-  metricsRetentionDays: 7,
-  adminAccessEnabled: true,
-  debugModeEnabled: false
+  debugModeEnabled: false,
+  websocketFallbackEnabled: false,
+  adminAccessEnabled: true
 };
 
 export const SystemSettings: React.FC = () => {
   const [config, setConfig] = useState<SystemConfig>(defaultConfig);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [connectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connected');
   
   const {
     deltaMode,
@@ -163,203 +137,121 @@ export const SystemSettings: React.FC = () => {
       )}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
-        {/* 差分更新設定 */}
+        {/* 核心機能設定 */}
         <Box>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <SpeedIcon color="primary" />
-                <Typography variant="h6" fontWeight="bold">差分更新設定</Typography>
+                <Typography variant="h6" fontWeight="bold">核心機能設定</Typography>
               </Box>
 
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={config.deltaUpdateEnabled}
-                    onChange={(e) => handleConfigChange('deltaUpdateEnabled', e.target.checked)}
-                    color="success"
-                  />
-                }
-                label="差分更新を有効化"
-                sx={{ mb: 2 }}
-              />
-
-              <Box sx={{ mb: 2 }}>
-                <Typography gutterBottom>圧縮閾値 ({(config.compressionThreshold * 100).toFixed(0)}%)</Typography>
-                <Slider
-                  value={config.compressionThreshold}
-                  onChange={(e, value) => handleConfigChange('compressionThreshold', value)}
-                  min={0.05}
-                  max={0.5}
-                  step={0.05}
-                  marks={[
-                    { value: 0.1, label: '10%' },
-                    { value: 0.25, label: '25%' },
-                    { value: 0.5, label: '50%' }
-                  ]}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => `${(value * 100).toFixed(0)}%`}
+              <Tooltip 
+                title="オン: 変更データのみ送信で90%転送量削減、200名環境で必須
+オフ: 全データ送信でネットワーク負荷増大、緊急時のみ"
+                placement="right"
+                arrow
+              >
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={config.deltaUpdateEnabled}
+                      onChange={(e) => handleConfigChange('deltaUpdateEnabled', e.target.checked)}
+                      color="success"
+                    />
+                  }
+                  label="差分更新を有効化 (90%データ転送削減)"
+                  sx={{ mb: 2 }}
                 />
-              </Box>
+              </Tooltip>
 
-              <TextField
-                label="バッチサイズ"
-                type="number"
-                value={config.batchSize}
-                onChange={(e) => handleConfigChange('batchSize', parseInt(e.target.value) || 50)}
-                fullWidth
-                size="small"
-                InputProps={{ inputProps: { min: 10, max: 1000 } }}
-              />
-            </CardContent>
-          </Card>
-        </Box>
-
-        {/* リフレッシュ設定 */}
-        <Box>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <RefreshIcon color="secondary" />
-                <Typography variant="h6" fontWeight="bold">リフレッシュ設定</Typography>
-              </Box>
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={config.autoRefreshEnabled}
-                    onChange={(e) => handleConfigChange('autoRefreshEnabled', e.target.checked)}
-                    color="secondary"
-                  />
-                }
-                label="自動リフレッシュを有効化"
-                sx={{ mb: 2 }}
-              />
-
-              <TextField
-                label="リフレッシュ間隔 (ミリ秒)"
-                type="number"
-                value={config.refreshInterval}
-                onChange={(e) => handleConfigChange('refreshInterval', parseInt(e.target.value) || 5000)}
-                fullWidth
-                size="small"
-                sx={{ mb: 2 }}
-                InputProps={{ inputProps: { min: 1000, max: 60000 } }}
-                helperText={`現在: ${config.refreshInterval / 1000}秒間隔`}
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={config.smartRefreshEnabled}
-                    onChange={(e) => handleConfigChange('smartRefreshEnabled', e.target.checked)}
-                    color="info"
-                  />
-                }
-                label="スマートリフレッシュ (展開状態に応じた頻度調整)"
-              />
-            </CardContent>
-          </Card>
-        </Box>
-
-        {/* WebSocket設定 */}
-        <Box>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <WebSocketIcon color="success" />
-                <Typography variant="h6" fontWeight="bold">WebSocket設定</Typography>
-                <Chip 
-                  label={connectionStatus} 
-                  color={connectionStatus === 'connected' ? 'success' : 'error'} 
-                  size="small" 
+              <Tooltip 
+                title="オン: 5-15秒間隔で自動データ更新、リアルタイム監視に必須
+オフ: 手動更新のみ、学生状況の把握が遅れる可能性"
+                placement="right"
+                arrow
+              >
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={config.autoRefreshEnabled}
+                      onChange={(e) => handleConfigChange('autoRefreshEnabled', e.target.checked)}
+                      color="secondary"
+                    />
+                  }
+                  label="自動リフレッシュを有効化 (リアルタイム監視)"
                 />
-              </Box>
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={config.websocketEnabled}
-                    onChange={(e) => handleConfigChange('websocketEnabled', e.target.checked)}
-                    color="success"
-                  />
-                }
-                label="WebSocket接続を有効化"
-                sx={{ mb: 2 }}
-              />
-
-              <TextField
-                label="再接続試行回数"
-                type="number"
-                value={config.reconnectAttempts}
-                onChange={(e) => handleConfigChange('reconnectAttempts', parseInt(e.target.value) || 3)}
-                fullWidth
-                size="small"
-                sx={{ mb: 2 }}
-                InputProps={{ inputProps: { min: 1, max: 10 } }}
-              />
-
-              <TextField
-                label="ハートビート間隔 (ミリ秒)"
-                type="number"
-                value={config.heartbeatInterval}
-                onChange={(e) => handleConfigChange('heartbeatInterval', parseInt(e.target.value) || 30000)}
-                fullWidth
-                size="small"
-                helperText={`現在: ${config.heartbeatInterval / 1000}秒間隔`}
-              />
+              </Tooltip>
             </CardContent>
           </Card>
         </Box>
 
-        {/* パフォーマンス設定 */}
+        {/* 運用支援設定 */}
         <Box>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <StorageIcon color="warning" />
-                <Typography variant="h6" fontWeight="bold">パフォーマンス設定</Typography>
+                <Typography variant="h6" fontWeight="bold">運用支援設定</Typography>
               </Box>
 
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={config.performanceMonitoringEnabled}
-                    onChange={(e) => handleConfigChange('performanceMonitoringEnabled', e.target.checked)}
-                    color="warning"
-                  />
-                }
-                label="パフォーマンス監視を有効化"
-                sx={{ mb: 2 }}
-              />
+              <Tooltip 
+                title="オン: システム性能を詳細測定、問題発見に有効
+オフ: 通常運用時、CPU使用量を若干軽減"
+                placement="right"
+                arrow
+              >
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={config.performanceMonitoringEnabled}
+                      onChange={(e) => handleConfigChange('performanceMonitoringEnabled', e.target.checked)}
+                      color="warning"
+                    />
+                  }
+                  label="パフォーマンス監視を有効化"
+                  sx={{ mb: 2 }}
+                />
+              </Tooltip>
 
-              <FormControl fullWidth size="small">
-                <InputLabel>メトリクス保持期間</InputLabel>
-                <Select
-                  value={config.metricsRetentionDays}
-                  onChange={(e) => handleConfigChange('metricsRetentionDays', e.target.value)}
-                  label="メトリクス保持期間"
-                >
-                  <MenuItem value={1}>1日</MenuItem>
-                  <MenuItem value={3}>3日</MenuItem>
-                  <MenuItem value={7}>1週間</MenuItem>
-                  <MenuItem value={14}>2週間</MenuItem>
-                  <MenuItem value={30}>1ヶ月</MenuItem>
-                </Select>
-              </FormControl>
+              <Tooltip 
+                title="オン: WebSocket接続失敗時に自動でポーリングに切替
+オフ: WebSocketのみ、接続問題時に更新停止の可能性"
+                placement="right"
+                arrow
+              >
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={config.websocketFallbackEnabled}
+                      onChange={(e) => handleConfigChange('websocketFallbackEnabled', e.target.checked)}
+                      color="info"
+                    />
+                  }
+                  label="WebSocket代替モード (接続問題時の自動切替)"
+                />
+              </Tooltip>
             </CardContent>
           </Card>
         </Box>
 
-        {/* セキュリティ設定 */}
-        <Card sx={{ backgroundColor: '#fafafa', mt: 2 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <SecurityIcon color="error" />
-              <Typography variant="h6" fontWeight="bold">セキュリティ・デバッグ設定</Typography>
-            </Box>
+      </Box>
+      
+      {/* セキュリティ・デバッグ設定 */}
+      <Card sx={{ backgroundColor: '#fafafa', mt: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <SecurityIcon color="error" />
+            <Typography variant="h6" fontWeight="bold">セキュリティ・デバッグ設定</Typography>
+          </Box>
 
-            <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <Tooltip 
+              title="オン: このシステム設定画面へのアクセス許可
+オフ: セキュリティ強化、設定変更を禁止"
+              placement="top"
+              arrow
+            >
               <FormControlLabel
                 control={
                   <Switch
@@ -370,6 +262,13 @@ export const SystemSettings: React.FC = () => {
                 }
                 label="管理画面アクセスを有効化"
               />
+            </Tooltip>
+            <Tooltip 
+              title="オン: 詳細ログ出力でトラブルシューティング支援
+オフ: 通常運用、本番環境では基本的にオフ推奨"
+              placement="top"
+              arrow
+            >
               <FormControlLabel
                 control={
                   <Switch
@@ -380,52 +279,52 @@ export const SystemSettings: React.FC = () => {
                 }
                 label="デバッグモードを有効化"
               />
-            </Box>
+            </Tooltip>
+          </Box>
 
-            {config.debugModeEnabled && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                デバッグモードが有効です。本番環境では無効にしてください。
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+          {config.debugModeEnabled && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              デバッグモードが有効です。本番環境では無効にしてください。
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* 現在の設定状況 */}
-        <Paper sx={{ p: 2, backgroundColor: '#f9f9f9', mt: 3 }}>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            現在のシステム状況
-          </Typography>
-          <List dense>
-            <ListItem>
-              <ListItemIcon>
-                {deltaMode ? <CheckIcon color="success" /> : <ErrorIcon color="error" />}
-              </ListItemIcon>
-              <ListItemText 
-                primary="差分更新モード" 
-                secondary={deltaMode ? '有効 - データ転送量90%削減中' : '無効 - フル更新モード'}
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                {autoRefresh ? <CheckIcon color="success" /> : <ErrorIcon color="error" />}
-              </ListItemIcon>
-              <ListItemText 
-                primary="自動リフレッシュ" 
-                secondary={autoRefresh ? `有効 - ${config.refreshInterval / 1000}秒間隔` : '無効'}
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                {performanceMonitoring ? <CheckIcon color="success" /> : <InfoIcon color="info" />}
-              </ListItemIcon>
-              <ListItemText 
-                primary="パフォーマンス監視" 
-                secondary={performanceMonitoring ? '測定中' : '停止中'}
-              />
-            </ListItem>
-          </List>
-        </Paper>
-      </Box>
+      {/* 現在の設定状況 */}
+      <Paper sx={{ p: 2, backgroundColor: '#f9f9f9', mt: 3 }}>
+        <Typography variant="h6" fontWeight="bold" gutterBottom>
+          現在のシステム状況
+        </Typography>
+        <List dense>
+          <ListItem>
+            <ListItemIcon>
+              {deltaMode ? <CheckIcon color="success" /> : <ErrorIcon color="error" />}
+            </ListItemIcon>
+            <ListItemText 
+              primary="差分更新モード" 
+              secondary={deltaMode ? '有効 - データ転送量90%削減中' : '無効 - フル更新モード'}
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              {autoRefresh ? <CheckIcon color="success" /> : <ErrorIcon color="error" />}
+            </ListItemIcon>
+            <ListItemText 
+              primary="自動リフレッシュ" 
+              secondary={autoRefresh ? '有効 - スマート間隔調整' : '無効'}
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              {performanceMonitoring ? <CheckIcon color="success" /> : <InfoIcon color="info" />}
+            </ListItemIcon>
+            <ListItemText 
+              primary="パフォーマンス監視" 
+              secondary={performanceMonitoring ? '測定中' : '停止中'}
+            />
+          </ListItem>
+        </List>
+      </Paper>
 
       <Divider sx={{ my: 3 }} />
 

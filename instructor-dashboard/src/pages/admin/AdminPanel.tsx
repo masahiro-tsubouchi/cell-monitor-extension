@@ -22,14 +22,14 @@ import {
   Speed as SpeedIcon,
   Home as HomeIcon,
   AdminPanelSettings as AdminIcon,
-  Memory as WorkerIcon
+  Storage as StorageIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 // 管理画面専用コンポーネント
 import { SystemSettings } from './components/SystemSettings';
 import { PerformanceMonitoring } from './components/PerformanceMonitoring';
-import { WorkerCompatibilityTest } from './components/WorkerCompatibilityTest';
+import { DatabaseManagement } from './components/DatabaseManagement';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -127,7 +127,7 @@ export const AdminPanel: React.FC = () => {
         <Typography variant="caption" display="block">
           • 差分更新統計とパフォーマンス監視の統合 ✅
           • システム設定管理UI ✅
-          • Worker互換性テスト ✅
+          • システム簡素化完了 ✅
         </Typography>
       </Alert>
 
@@ -169,12 +169,12 @@ export const AdminPanel: React.FC = () => {
               }}
             />
             <Tab
-              icon={<WorkerIcon />}
-              label="Worker テスト"
+              icon={<StorageIcon />}
+              label="データベース管理"
               {...a11yProps(2)}
               sx={{
                 '&.Mui-selected': {
-                  backgroundColor: 'rgba(156, 39, 176, 0.04)'
+                  backgroundColor: 'rgba(63, 81, 181, 0.04)'
                 }
               }}
             />
@@ -191,7 +191,7 @@ export const AdminPanel: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={currentTab} index={2}>
-          <WorkerCompatibilityTest />
+          <DatabaseManagement />
         </TabPanel>
       </Paper>
 
